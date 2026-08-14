@@ -124,7 +124,7 @@ if [ ! -f "$USER_SCRIPTS_DIR/subscription.json" ]; then
   printf '%s\n' '{' \
     '  "active": "default",' \
     '  "subscriptions": [' \
-    '    {"name":"default","type":"local","path":"local/default.json","url":null,"updated_at":null}' \
+    '    {"name":"default","type":"local","filename":"default.json","url":null,"updated_at":null}' \
     '  ]' \
     '}' >"$USER_SCRIPTS_DIR/subscription.json"
 fi
