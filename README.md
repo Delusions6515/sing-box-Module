@@ -15,7 +15,7 @@
 
 分应用代理由 `sing-box.config` 中三个配置项控制：`app_proxy_enable`、`app_proxy_mode`（`whitelist` 或 `blacklist`）和 `auto_proxy_apps_enable`。白名单仅代理 `proxy_apps_list`，黑名单仅绕过 `bypass_apps_list`。自动生成默认关闭；开启后模块会在每次启动时获取当前 Android 用户的已安装包名，并和 v2rayNG 名单求交集。该来源并不适合作为通用规则，建议仅在白名单模式使用。
 
-自动或手动分流会生成互斥的代理与绕过集合：`redirect`/`tproxy` 只写入 ATP 实际读取的一侧名单；`tun` 和 `ebpf` 入站使用裸包名写入 `include_package` 和 `exclude_package`。当前按 Android 单用户处理，不生成 `userId:package` 条目。`force_proxy_app.txt` 总是强制代理，`force_bypass_app.txt` 总是强制绕过；两者不受以上三个开关影响。自定义入站的 `include_package`、`exclude_package` 在运行时由最终集合接管；不支持这两个字段的入站不会被改写。
+自动或手动分流会生成互斥的代理与绕过集合：`redirect`/`tproxy` 只写入 ATP 实际读取的一侧名单；`tun` 和 `ebpf` 入站在白名单模式仅写入 `include_package`，在黑名单模式仅写入 `exclude_package`。当前按 Android 单用户处理，不生成 `userId:package` 条目。`force_proxy_app.txt` 总是强制代理，`force_bypass_app.txt` 总是强制绕过；两者不受以上三个开关影响。自定义入站的 `include_package`、`exclude_package` 在运行时由最终集合接管；不支持这两个字段的入站不会被改写。
 
 手动修改当前配置、模块设置或当前模式入站时，模块不会自动重启。`config.inotify` 会记录待重启状态，管理器的 [执行] 菜单会显示警告；从该菜单切换配置或更新当前远程订阅后，菜单会主动重启服务。
 

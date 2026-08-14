@@ -29,6 +29,11 @@ normalize_packages() {
   '
 }
 
+remove_forced_packages() { # $1=force list, $2=candidate list
+  [ -s "$1" ] || { cat "$2"; return; }
+  awk 'FNR == NR { forced[$0] = 1; next } !forced[$0]' "$1" "$2"
+}
+
 current_user() {
   _user=$(cmd activity get-current-user 2>/dev/null)
   case "$_user" in *[!0-9]*|'') _user=$(am get-current-user 2>/dev/null) ;; esac
@@ -96,8 +101,7 @@ build_lists() {
   if [ "$_effective_mode" = "blacklist" ]; then
     cat "$_tmp_dir/auto-bypass" "$_tmp_dir/manual-bypass" "$_tmp_dir/force-bypass" \
       | normalize_packages - >"$_tmp_dir/bypass-candidates"
-    awk 'FNR == NR { forced[$0] = 1; next } !forced[$0]' \
-      "$_tmp_dir/force-proxy" "$_tmp_dir/bypass-candidates" >"$_tmp_dir/bypass-wanted"
+    remove_forced_packages "$_tmp_dir/force-proxy" "$_tmp_dir/bypass-candidates" >"$_tmp_dir/bypass-wanted"
     awk 'FNR == NR { wanted[$0] = 1; next } wanted[$0]' \
       "$_tmp_dir/bypass-wanted" "$_tmp_dir/installed" >"$_tmp_dir/bypass"
     awk 'FNR == NR { bypass[$0] = 1; next } !bypass[$0]' \
@@ -106,8 +110,7 @@ build_lists() {
   else
     cat "$_tmp_dir/auto-proxy" "$_tmp_dir/manual-proxy" "$_tmp_dir/force-proxy" \
       | normalize_packages - >"$_tmp_dir/proxy-candidates"
-    awk 'FNR == NR { forced[$0] = 1; next } !forced[$0]' \
-      "$_tmp_dir/force-bypass" "$_tmp_dir/proxy-candidates" >"$_tmp_dir/proxy-wanted"
+    remove_forced_packages "$_tmp_dir/force-bypass" "$_tmp_dir/proxy-candidates" >"$_tmp_dir/proxy-wanted"
     awk 'FNR == NR { wanted[$0] = 1; next } wanted[$0]' \
       "$_tmp_dir/proxy-wanted" "$_tmp_dir/installed" >"$_tmp_dir/proxy"
     awk 'FNR == NR { proxy[$0] = 1; next } !proxy[$0]' \
