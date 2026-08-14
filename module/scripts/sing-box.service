@@ -1,0 +1,139 @@
+#!/system/bin/sh
+# ============================================================
+# sing-box 服务控制
+# 用法: sing-box.service {start|stop|restart}
+# 供开机启动脚本 / action.sh / 手动执行调用
+# ============================================================
+
+SCRIPTS_DIR=$(dirname "$0")
+. "$SCRIPTS_DIR/lib.sh"
+load_config
+
+export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH"
+
+mkdir -p "$run_path"
+
+# 清理 3 天前的旧日志
+find "$sing_box_path" -mtime +3 -type f -name "*.log" -delete 2>/dev/null
+
+log() {
+  export TZ=Asia/Shanghai
+  now=$(date +"[%Y-%m-%d %H:%M:%S %Z]")
+  case $1 in
+    Info)  [ -t 1 ] && echo -e "\033[1;32m${now} [Info]: $2\033[0m" || echo "${now} [Info]: $2" ;;
+    Warn)  [ -t 1 ] && echo -e "\033[1;33m${now} [Warn]: $2\033[0m" || echo "${now} [Warn]: $2" ;;
+    Error) [ -t 1 ] && echo -e "\033[1;31m${now} [Error]: $2\033[0m" || echo "${now} [Error]: $2" ;;
+    *)     [ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2" ;;
+  esac
+}
+
+CONFIG_BUILDER="$SCRIPTS_DIR/config-builder.sh"
+TPROXY_ADAPTER="$SCRIPTS_DIR/tproxy.sh"
+
+stop_core() {
+  if ! service_running; then
+    return 0
+  fi
+  _pid=$(cat "$service_pid_file")
+  kill -15 "$_pid" 2>/dev/null
+  _wait=0
+  while kill -0 "$_pid" 2>/dev/null && [ "$_wait" -lt 5 ]; do
+    sleep 1
+    _wait=$((_wait + 1))
+  done
+  kill -0 "$_pid" 2>/dev/null && kill -9 "$_pid" 2>/dev/null
+  rm -f "$service_pid_file"
+}
+
+start_bin() {
+  if service_running; then
+    log Warn "${bin_name} 已在运行, 跳过启动"
+    return 0
+  fi
+
+  # 内核二进制缺失时尝试从内置渠道安装
+  if [ ! -f "$bin_path" ]; then
+    log Info "未找到内核二进制, 尝试自动下载 ..."
+    sh "$SCRIPTS_DIR/update_kernel.sh" || {
+      log Error "内核下载失败, 请使用 [执行] 菜单手动更新"
+      return 1
+    }
+  fi
+
+  log Info "starting ${bin_name} service."
+  ulimit -SHn 1000000 2>/dev/null || log Warn "无法提高文件描述符上限, 使用系统限制"
+  chmod 755 "$bin_path"
+
+  # Every start receives a generated copy under config/run/. User complete
+  # configurations are never modified.
+  if ! sh "$CONFIG_BUILDER" build; then
+    log Error "运行配置生成失败"
+    return 1
+  fi
+  if ! "$bin_path" check -c "$runtime_config_path" \
+    >>"$run_path/${bin_name}.log" 2>>"$run_path/${bin_name}_error.log"; then
+    log Error "配置检查失败, 未启动 ${bin_name}"
+    return 1
+  fi
+
+  mv "$run_path/${bin_name}.log" "$run_path/${bin_name}.log.bak" >/dev/null 2>&1
+  mv "$run_path/${bin_name}_error.log" "$run_path/${bin_name}_error.log.bak" >/dev/null 2>&1
+
+  # 当前版本以 root 运行 (透明代理需要 root; 降权计划后续版本提供)
+  nohup "$bin_path" run -c "$runtime_config_path" -D "$sing_box_path" \
+    >"$run_path/${bin_name}.log" 2>"$run_path/${bin_name}_error.log" &
+  local pid=$!
+  sleep 2
+
+  if ! kill -0 "$pid" 2>/dev/null; then
+    log Error "${bin_name} 启动失败, 查看 $run_path/${bin_name}_error.log"
+    return 1
+  fi
+  echo "$pid" >"$service_pid_file"
+
+  # Apply rules only after the core is known alive. A rules failure rolls back
+  # the core to avoid an apparently running service without proxy coverage.
+  if ! sh "$TPROXY_ADAPTER" start; then
+    log Error "透明代理规则装载失败, 回滚核心进程"
+    stop_core
+    return 1
+  fi
+
+  # 记录本次启动时间 (供配置修改提醒)
+  date '+%Y-%m-%d %H:%M:%S' > "$run_path/.start_marker" 2>/dev/null
+
+  log Info "${bin_name} 已启动 (pid $pid)"
+  return 0
+}
+
+stop_service() {
+  log Warn "stopping ${bin_name} service."
+  sh "$TPROXY_ADAPTER" stop || log Warn "透明代理规则清理失败"
+  stop_core
+}
+
+case "$1" in
+  start)
+    start_bin
+    ;;
+  stop)
+    stop_service
+    ;;
+  restart)
+    stop_service
+    sleep 2
+    start_bin
+    ;;
+  status)
+    if service_running; then
+      log Info "${bin_name} 正在运行 (pid $(cat "$service_pid_file"))"
+      exit 0
+    fi
+    log Info "${bin_name} 未运行"
+    exit 3
+    ;;
+  *)
+    log Error "用法: $0 {start|stop|restart|status}"
+    exit 1
+    ;;
+esac

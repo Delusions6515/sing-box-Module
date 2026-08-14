@@ -1,0 +1,37 @@
+#!/system/bin/sh
+# Reload only when the selected complete config or user settings change.
+
+events=$1
+monitor_dir=$2
+monitor_file=$3
+
+SCRIPTS_DIR=$(dirname "$0")
+. "$SCRIPTS_DIR/lib.sh"
+load_config
+
+case "$monitor_file" in
+  ''|*.new|*.tmp|*.bak) exit 0 ;;
+esac
+
+reload_needed=0
+if [ "$monitor_dir" = "$user_scripts_path" ]; then
+  case "$monitor_file" in
+    sing-box.config|tproxy.conf|subscription.json) reload_needed=1 ;;
+  esac
+else
+  if resolve_active_config >/dev/null 2>&1 && [ "$monitor_dir/$monitor_file" = "$active_config_path" ]; then
+    reload_needed=1
+  fi
+fi
+
+[ "$reload_needed" = "1" ] || exit 0
+[ -f "$sing_box_path/manual" ] && exit 0
+
+_reload_lock="$run_path/.config-reload.lock"
+mkdir "$run_path" 2>/dev/null
+mkdir "$_reload_lock" 2>/dev/null || exit 0
+(
+  sleep 1
+  sh "$SCRIPTS_DIR/sing-box.service" restart >>"$run_path/run.log" 2>>"$run_path/run_error.log"
+  rmdir "$_reload_lock" 2>/dev/null
+) &

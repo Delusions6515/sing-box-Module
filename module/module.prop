@@ -1,0 +1,6 @@
+id=sing-box_module
+name=sing-box for Android Module
+version=${versionName}
+versionCode=${versionCode}
+author=Delusions6515
+description=Run sing-box with transparent proxy on Android (Magisk / KernelSU / APatch).
