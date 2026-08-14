@@ -208,6 +208,7 @@ switch_channel() {
 
 # ---------- 配置/订阅 ----------
 SUBSCRIPTION_TOOL="$SCRIPTS_DIR/subscription.sh"
+GOOGLE_FIREWALL_FIXER="$SCRIPTS_DIR/google-firewall-fixer.sh"
 
 select_config_menu() {
   local names name selected="" i=1 old_ifs
@@ -295,6 +296,7 @@ main_menu() {
       "重启 sing-box" \
       "配置管理 ..." \
       "更新内核 ..." \
+      "清理 Google 服务拦截规则" \
       "$AUTOSTART_LABEL" \
       "退出"
     case "$MENU_SEL" in
@@ -303,8 +305,9 @@ main_menu() {
       3) run_op "重启 sing-box" run sh "$SCRIPTS_DIR/sing-box.service" restart ;;
       4) config_menu ;;
       5) kernel_menu ;;
-      6) echo ""; toggle_autostart ;;
-      7) break ;;
+      6) run_op "清理 Google 服务拦截规则" run sh "$GOOGLE_FIREWALL_FIXER" apply ;;
+      7) echo ""; toggle_autostart ;;
+      8) break ;;
     esac
   done
 }

@@ -17,6 +17,8 @@
 
 核心启动并通过存活检查后才会加载透明代理规则；规则加载失败会停止刚启动的核心，避免服务显示运行但流量未被接管。网络接口变化时，模块会重建本机地址的旁路规则以避免回环；这部分规则使用独立链，并在启动前、停止和卸载时清理。停止或卸载时会优先清理规则，再依据模块自己的 PID 文件停止核心，不会通过全局 `pidof sing-box` 影响其他实例。
 
+ColorOS 16 与 RedMagic OS 会在系统启动 60 秒后被检查；模块会移除 `fw_INPUT`、`fw_OUTPUT`、`fw_OUTPUT_oplus_dns`、`zte_fw_gms` 中拦截流量的 `REJECT`/`DROP` 规则，使 Google Play 商店和 Google Play 服务能够联网。该操作也可从管理器 [执行] 菜单手动运行，日志位于 `/data/adb/sing-box_module/run/google-firewall-fixer.log`。
+
 ## 配置
 
 - 模块配置：`/data/adb/sing-box_module/scripts/sing-box.config`
@@ -39,3 +41,8 @@ su -c 'sh /data/adb/modules/sing-box_module/scripts/sing-box.service restart'
 本项目参考甚至复制了以下项目的代码，特此鸣谢
 - https://github.com/CHIZI-0618/box4magisk
 - https://github.com/CHIZI-0618/AndroidTProxyShell
+- https://github.com/CHIZI-0618/ColorOS-Google-Firewall-Fixer
+
+## LICENSE
+
+[AGPL-3.0](LICENSE)
