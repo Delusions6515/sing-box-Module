@@ -21,7 +21,7 @@ ensure_subscription_store() {
     printf '%s\n' '{' \
       '  "active": "default",' \
       '  "subscriptions": [' \
-      '    {"name":"default","type":"local","path":"local/default.json","url":null,"updated_at":null}' \
+      '    {"name":"default","type":"local","filename":"default.json","url":null,"updated_at":null}' \
       '  ]' \
       '}' >"$subscription_file"
   fi
@@ -36,13 +36,11 @@ ensure_subscription_store() {
     and all(.subscriptions[];
       (.name | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]*$")) and
       (.type == "local" or .type == "remote") and
-      (.path | type == "string") and
-      (.path | startswith("/") | not) and
-      (.path | contains("..") | not) and
+      (.filename | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]*$") and contains("..") | not) and
       (if .type == "local" then
-         (.path | startswith("local/")) and (.url == null)
+         (.url == null)
        else
-         (.path | startswith("remote/")) and (.url | type == "string" and length > 0)
+         (.url | type == "string" and length > 0)
        end) and
       ((.updated_at // null) | type == "null" or type == "string")
     )
@@ -59,7 +57,7 @@ active_subscription() {
 
 list_subscriptions() {
   ensure_subscription_store || return 1
-  "$jq_bin" -r '.subscriptions[] | [.name, .type, (.url // .path)] | @tsv' "$subscription_file"
+  "$jq_bin" -r '.subscriptions[] | [.name, .type, (.url // .filename)] | @tsv' "$subscription_file"
 }
 
 select_subscription() {
@@ -78,20 +76,18 @@ update_active_subscription() {
   _type=$("$jq_bin" -r --arg name "$_active" '.subscriptions[] | select(.name == $name) | .type' "$subscription_file")
   [ "$_type" = "remote" ] || { info "当前配置不是远程订阅，无需更新"; return 0; }
   _url=$("$jq_bin" -r --arg name "$_active" '.subscriptions[] | select(.name == $name) | .url // empty' "$subscription_file")
-  _path=$("$jq_bin" -r --arg name "$_active" '.subscriptions[] | select(.name == $name) | .path // empty' "$subscription_file")
-  case "$_url:$_path" in
-    :*|*:) err "远程订阅缺少 url 或 path"; return 1 ;;
+  _filename=$("$jq_bin" -r --arg name "$_active" '.subscriptions[] | select(.name == $name) | .filename // empty' "$subscription_file")
+  case "$_url:$_filename" in
+    :*|*:) err "远程订阅缺少 url 或 filename"; return 1 ;;
   esac
-  case "$_path" in remote/*) ;; *) err "远程订阅 path 必须位于 remote/"; return 1 ;; esac
-  case "$_path" in *'..'*|/*) err "远程订阅 path 无效"; return 1 ;; esac
-  mkdir -p "$(dirname "$config_root/$_path")" || return 1
-  download "$_url" "$config_root/$_path.new" || return 1
-  "$jq_bin" -e . "$config_root/$_path.new" >/dev/null || {
-    rm -f "$config_root/$_path.new"
+  case "$_filename" in ''|.*|*/*|*'..'*|*[!A-Za-z0-9._-]*) err "远程订阅 filename 无效"; return 1 ;; esac
+  download "$_url" "$remote_config_path/$_filename.new" || return 1
+  "$jq_bin" -e . "$remote_config_path/$_filename.new" >/dev/null || {
+    rm -f "$remote_config_path/$_filename.new"
     err "远程订阅不是有效 JSON"
     return 1
   }
-  mv -f "$config_root/$_path.new" "$config_root/$_path"
+  mv -f "$remote_config_path/$_filename.new" "$remote_config_path/$_filename"
   "$jq_bin" --arg name "$_active" --arg now "$(date '+%Y-%m-%d %H:%M:%S')" '
     .subscriptions |= map(if .name == $name then .updated_at = $now else . end)
   ' "$subscription_file" >"$subscription_file.new" || return 1

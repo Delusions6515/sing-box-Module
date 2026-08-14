@@ -56,21 +56,27 @@ resolve_active_config() {
   _jq="${jq_path:-$sing_box_path/bin/jq}"
   [ -x "$_jq" ] || { err "缺少 jq: $_jq"; return 1; }
   [ -f "$subscription_file" ] || { err "缺少订阅索引: $subscription_file"; return 1; }
-  _active_path=$("$_jq" -r '
+  _active_type=$("$_jq" -r '
     .active as $active
     | .subscriptions[]?
     | select(.name == $active)
-    | select(
-        (.type == "local" and (.path | type == "string" and startswith("local/")))
-        or
-        (.type == "remote" and (.path | type == "string" and startswith("remote/")))
-      )
-    | .path // empty
+    | .type // empty
   ' "$subscription_file" 2>/dev/null)
-  case "$_active_path" in
-    ''|/*|*'..'*) err "订阅索引中的当前配置无效"; return 1 ;;
+  _active_filename=$("$_jq" -r '
+    .active as $active
+    | .subscriptions[]?
+    | select(.name == $active)
+    | .filename // empty
+  ' "$subscription_file" 2>/dev/null)
+  case "$_active_type" in
+    local) _active_dir=$local_config_path ;;
+    remote) _active_dir=$remote_config_path ;;
+    *) err "订阅索引中的当前配置类型无效"; return 1 ;;
   esac
-  active_config_path="${config_root}/$_active_path"
+  case "$_active_filename" in
+    ''|.*|*/*|*'..'*|*[!A-Za-z0-9._-]*) err "订阅索引中的当前配置文件名无效"; return 1 ;;
+  esac
+  active_config_path="${_active_dir}/$_active_filename"
   [ -f "$active_config_path" ] || { err "当前配置不存在: $active_config_path"; return 1; }
 }
 

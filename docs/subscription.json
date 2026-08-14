@@ -1,0 +1,19 @@
+{
+  "active": "example-local",
+  "subscriptions": [
+    {
+      "name": "example-local",
+      "type": "local",
+      "filename": "example.json",
+      "url": null,
+      "updated_at": null
+    },
+    {
+      "name": "example-remote",
+      "type": "remote",
+      "filename": "example.json",
+      "url": "https://example.com/sing-box.json",
+      "updated_at": "2026-08-14 00:00:00"
+    }
+  ]
+}
