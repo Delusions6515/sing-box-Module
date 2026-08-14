@@ -100,6 +100,7 @@ start_bin() {
   fi
 
   # 记录本次启动时间 (供配置修改提醒)
+  rm -f "$run_path/.config-changed"
   date '+%Y-%m-%d %H:%M:%S' > "$run_path/.start_marker" 2>/dev/null
 
   log Info "${bin_name} 已启动 (pid $pid)"

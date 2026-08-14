@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Reload only when the selected complete config or user settings change.
+# Mark a manual configuration change; users apply it by restarting the service.
 
 events=$1
 monitor_dir=$2
@@ -13,27 +13,26 @@ case "$monitor_file" in
   ''|*.new|*.tmp|*.bak) exit 0 ;;
 esac
 
-reload_needed=0
+changed_path=""
 if [ "$monitor_dir" = "$user_scripts_path" ]; then
   case "$monitor_file" in
-    sing-box.config|tproxy.conf|subscription.json) reload_needed=1 ;;
+    sing-box.config|tproxy.conf|subscription.json) changed_path="$monitor_dir/$monitor_file" ;;
   esac
 elif [ "$monitor_dir" = "$user_inbounds_path" ]; then
-  [ "$monitor_file" = "${proxy_mode}.json" ] && reload_needed=1
+  [ "$monitor_file" = "${proxy_mode}.json" ] && changed_path="$monitor_dir/$monitor_file"
 else
   if resolve_active_config >/dev/null 2>&1 && [ "$monitor_dir/$monitor_file" = "$active_config_path" ]; then
-    reload_needed=1
+    changed_path="$active_config_path"
   fi
 fi
 
-[ "$reload_needed" = "1" ] || exit 0
-[ -f "$sing_box_path/manual" ] && exit 0
+[ -n "$changed_path" ] || exit 0
+if [ -f "$run_path/.start_marker" ] && [ -e "$changed_path" ] && [ ! "$changed_path" -nt "$run_path/.start_marker" ]; then
+  exit 0
+fi
 
-_reload_lock="$run_path/.config-reload.lock"
 mkdir "$run_path" 2>/dev/null
-mkdir "$_reload_lock" 2>/dev/null || exit 0
-(
-  sleep 1
-  sh "$SCRIPTS_DIR/sing-box.service" restart >>"$run_path/run.log" 2>>"$run_path/run_error.log"
-  rmdir "$_reload_lock" 2>/dev/null
-) &
+[ -f "$run_path/.config-changed" ] && exit 0
+: >"$run_path/.config-changed"
+echo "[Warn] 检测到配置已修改，服务尚未重启；请在管理器 [执行] 菜单手动重启后生效。" \
+  >>"$run_path/run.log"

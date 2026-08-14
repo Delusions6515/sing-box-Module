@@ -70,6 +70,9 @@ draw_menu() {
   else
     echo "  状态: 未运行"
   fi
+  if [ -f "$run_path/.config-changed" ]; then
+    echo "  警告: 配置已修改，尚未重启"
+  fi
   echo "  内核: $(cat "$sing_box_path/bin/kernel_version" 2>/dev/null || echo unknown) ($kernel_channel)"
   echo "---------------------------------------"
   echo ""
@@ -206,22 +209,6 @@ switch_channel() {
 # ---------- 配置/订阅 ----------
 SUBSCRIPTION_TOOL="$SCRIPTS_DIR/subscription.sh"
 
-# The config watcher should not race a foreground apply operation from this
-# menu. It uses the same lock and will ignore the write while we restart.
-acquire_config_reload_lock() {
-  local lock="$run_path/.config-reload.lock" tries=0
-  mkdir -p "$run_path" || return 1
-  while ! mkdir "$lock" 2>/dev/null; do
-    tries=$((tries + 1))
-    [ "$tries" -ge 5 ] && return 1
-    sleep 1
-  done
-}
-
-release_config_reload_lock() {
-  rmdir "$run_path/.config-reload.lock" 2>/dev/null
-}
-
 select_config_menu() {
   local names name selected="" i=1 old_ifs
   names=$(sh "$SUBSCRIPTION_TOOL" list 2>/dev/null | cut -f1 | tr '\n' '|')
@@ -242,14 +229,11 @@ select_config_menu() {
     fi
     i=$((i + 1))
   done
-  acquire_config_reload_lock || { echo "配置正在应用，请稍后重试"; return; }
   if ! sh "$SUBSCRIPTION_TOOL" select "$selected"; then
-    release_config_reload_lock
     return
   fi
   echo "已选择配置: $selected"
   run_op "应用配置" run sh "$SCRIPTS_DIR/sing-box.service" restart
-  release_config_reload_lock
 }
 
 config_menu() {
@@ -264,11 +248,9 @@ config_menu() {
     case "$MENU_SEL" in
       1) select_config_menu ;;
       2)
-        acquire_config_reload_lock || { echo "配置正在应用，请稍后重试"; continue; }
         if run_op "更新当前远程订阅" update sh "$SUBSCRIPTION_TOOL" update-active; then
           run_op "应用配置" run sh "$SCRIPTS_DIR/sing-box.service" restart
         fi
-        release_config_reload_lock
         ;;
       3) return ;;
     esac
