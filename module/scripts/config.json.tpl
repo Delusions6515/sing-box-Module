@@ -7,7 +7,7 @@
     "servers": [
       {
         "tag": "local",
-        "address": "local"
+        "type": "local"
       }
     ]
   },
