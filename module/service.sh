@@ -12,6 +12,7 @@ start_watchers() {
   . "$SCRIPTS_DIR/lib.sh"
   load_config
   inotifyd "$SCRIPTS_DIR/sing-box.inotify" "$MODDIR" >/dev/null 2>&1 &
+  inotifyd "$SCRIPTS_DIR/net.inotify" /sys/class/net >/dev/null 2>&1 &
   inotifyd "$SCRIPTS_DIR/config.inotify" \
     "$user_scripts_path" "$local_config_path" "$remote_config_path" "$user_inbounds_path" >/dev/null 2>&1 &
 }

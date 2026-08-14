@@ -9,12 +9,18 @@ SCRIPTS_DIR="$MODDIR/scripts"
 
 # 停止 inotifyd 监控
 for pid in $(pidof inotifyd 2>/dev/null); do
-  grep -Eq 'sing-box\.inotify|config\.inotify' /proc/$pid/cmdline 2>/dev/null && kill "$pid" 2>/dev/null
+  grep -Eq 'sing-box\.inotify|config\.inotify|net\.inotify' /proc/$pid/cmdline 2>/dev/null && kill "$pid" 2>/dev/null
 done
 
 # 停止服务 (会顺带清理 iptables 规则)
 if [ -f "$SCRIPTS_DIR/sing-box.service" ]; then
   sh "$SCRIPTS_DIR/sing-box.service" stop >/dev/null 2>&1
+fi
+
+# Remove the module-owned local-address bypass chain even if the service was
+# already stopped or its previous runtime configuration is no longer present.
+if [ -f "$SCRIPTS_DIR/tproxy.sh" ]; then
+  sh "$SCRIPTS_DIR/tproxy.sh" cleanup >/dev/null 2>&1
 fi
 
 # 兜底清理透明代理规则 (防残留)

@@ -14,6 +14,58 @@ tproxy_command() {
 }
 
 tproxy_runtime_dir="$runtime_tproxy_dir"
+local_bypass_chain="SB_MODULE_LOCAL_BYPASS"
+
+cleanup_local_bypass_rules() {
+  for _cmd in iptables ip6tables; do
+    command -v "$_cmd" >/dev/null 2>&1 || continue
+    _suffix=""
+    [ "$_cmd" = "ip6tables" ] && _suffix=6
+    for _table in mangle nat; do
+      while "$_cmd" -w 100 -t "$_table" -D "BYPASS_IP$_suffix" -j "$local_bypass_chain" 2>/dev/null; do :; done
+      "$_cmd" -w 100 -t "$_table" -F "$local_bypass_chain" 2>/dev/null
+      "$_cmd" -w 100 -t "$_table" -X "$local_bypass_chain" 2>/dev/null
+    done
+  done
+}
+
+refresh_local_bypass_family() { # $1=iptables command, $2=table, $3=suffix, $4=IP version
+  _cmd=$1
+  _table=$2
+  _suffix=$3
+  _version=$4
+
+  "$_cmd" -w 100 -t "$_table" -N "$local_bypass_chain" 2>/dev/null || return 1
+  "$_cmd" -w 100 -t "$_table" -F "$local_bypass_chain" || return 1
+  "$_cmd" -w 100 -t "$_table" -I "BYPASS_IP$_suffix" 1 -j "$local_bypass_chain" || return 1
+
+  if [ "$_version" = "4" ]; then
+    ip -4 addr show 2>/dev/null | awk '$1 == "inet" && $2 !~ /^127\./ { print $2 }'
+  else
+    ip -6 addr show 2>/dev/null | awk '$1 == "inet6" && $2 !~ /^(::1|fe80:)/ { print $2 }'
+  fi | while IFS= read -r _address; do
+    [ -n "$_address" ] || continue
+    "$_cmd" -w 100 -t "$_table" -A "$local_bypass_chain" -d "$_address" -p udp ! --dport 53 -j ACCEPT
+    "$_cmd" -w 100 -t "$_table" -A "$local_bypass_chain" -d "$_address" ! -p udp -j ACCEPT
+  done
+}
+
+refresh_local_bypass_rules() {
+  [ -f "$tproxy_state_file" ] || return 0
+  [ -f "$tproxy_runtime_dir/runtime_tproxy.conf" ] || return 0
+
+  # shellcheck disable=SC1090
+  . "$tproxy_runtime_dir/runtime_tproxy.conf"
+  case "${USE_TPROXY:-}" in
+    1) _table=mangle ;;
+    0) _table=nat ;;
+    *) return 0 ;;
+  esac
+
+  cleanup_local_bypass_rules
+  refresh_local_bypass_family iptables "$_table" "" 4 || return 0
+  [ "${PROXY_IPV6:-0}" = "1" ] && refresh_local_bypass_family ip6tables "$_table" 6 6
+}
 
 prepare_tproxy_config() {
   [ -f "$user_scripts_path/tproxy.conf" ] || { echo "[Error] 缺少透明代理配置: $user_scripts_path/tproxy.conf" >&2; return 1; }
@@ -64,6 +116,8 @@ prepare_tproxy_config() {
 }
 
 tproxy_start() {
+  # Remove a chain left behind by an interrupted stop before applying rules.
+  cleanup_local_bypass_rules
   tproxy_enabled || return 0
   _tproxy=$(tproxy_command)
   [ -f "$_tproxy" ] || { echo "[Error] 缺少 AndroidTProxyShell: $_tproxy" >&2; return 1; }
@@ -71,9 +125,11 @@ tproxy_start() {
   prepare_tproxy_config || return 1
   sh "$_tproxy" -d "$tproxy_runtime_dir" start || return 1
   : >"$tproxy_state_file"
+  refresh_local_bypass_rules
 }
 
 tproxy_stop() {
+  cleanup_local_bypass_rules
   # Always try cleanup when a previous start recorded state. This also handles
   # users changing proxy_mode before stopping the service.
   if ! tproxy_enabled && [ ! -f "$tproxy_state_file" ]; then
@@ -91,5 +147,7 @@ tproxy_stop() {
 case "$1" in
   start) tproxy_start ;;
   stop) tproxy_stop ;;
-  *) echo "用法: $0 {start|stop}" >&2; exit 2 ;;
+  refresh-local-bypass) refresh_local_bypass_rules ;;
+  cleanup) cleanup_local_bypass_rules ;;
+  *) echo "用法: $0 {start|stop|refresh-local-bypass|cleanup}" >&2; exit 2 ;;
 esac

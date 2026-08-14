@@ -150,7 +150,7 @@ chmod 755 "$BIN_DIR/sing-box" 2>/dev/null
 set_perm "$USER_SCRIPTS_DIR/sing-box.config" 0 0 0600
 set_perm "$USER_SCRIPTS_DIR/tproxy.conf" 0 0 0600
 set_perm "$USER_SCRIPTS_DIR/subscription.json" 0 0 0600
-chmod ugo+x "$MODPATH"/*.sh "$MODPATH"/scripts/*.sh "$MODPATH"/scripts/sing-box.service "$MODPATH"/scripts/sing-box.inotify "$MODPATH"/scripts/config.inotify 2>/dev/null
+chmod ugo+x "$MODPATH"/*.sh "$MODPATH"/scripts/*.sh "$MODPATH"/scripts/sing-box.service "$MODPATH"/scripts/sing-box.inotify "$MODPATH"/scripts/config.inotify "$MODPATH"/scripts/net.inotify 2>/dev/null
 
 ui_print "- 安装完成"
 ui_print "- 重启后 sing-box 将自动启动"
