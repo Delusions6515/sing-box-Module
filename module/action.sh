@@ -209,6 +209,7 @@ switch_channel() {
 # ---------- 配置/订阅 ----------
 SUBSCRIPTION_TOOL="$SCRIPTS_DIR/subscription.sh"
 GOOGLE_FIREWALL_FIXER="$SCRIPTS_DIR/google-firewall-fixer.sh"
+APP_LIST_TOOL="$SCRIPTS_DIR/app-list.sh"
 
 select_config_menu() {
   local names name selected="" i=1 old_ifs
@@ -245,6 +246,7 @@ config_menu() {
       "配置管理 (当前: $active)" \
       "选择当前配置 ..." \
       "更新当前远程订阅" \
+      "更新预置代理应用名单" \
       "返回上一级"
     case "$MENU_SEL" in
       1) select_config_menu ;;
@@ -253,7 +255,12 @@ config_menu() {
           run_op "应用配置" run sh "$SCRIPTS_DIR/sing-box.service" restart
         fi
         ;;
-      3) return ;;
+      3)
+        if run_op "更新预置代理应用名单" update sh "$APP_LIST_TOOL" update-proxy-package-list; then
+          run_op "应用分流设置" run sh "$SCRIPTS_DIR/sing-box.service" restart
+        fi
+        ;;
+      4) return ;;
     esac
   done
 }

@@ -11,7 +11,11 @@
 - `scripts/subscription.sh`：维护订阅索引和当前完整配置。
 - `scripts/config-builder.sh` 与 `scripts/tproxy.sh`：前者生成 `config/run/config.json`，后者生成规则副本并调用 AndroidTProxyShell。
 
-每个本地或远程订阅都是完整 sing-box 配置。服务从当前选中项生成 `config/run/config.json`；`redirect` 或 `tproxy` 模式会额外注入 `sb-module-*` 入站，源配置不会被修改。`tproxy.conf` 的运行时副本会在黑名单模式合并自动绕过包名和用户列表，并强制与模块代理模式一致；白名单模式只代理 `PROXY_APPS_LIST` 中的应用。
+每个本地或远程订阅都是完整 sing-box 配置。服务从当前选中项生成 `config/run/config.json`；模式入站会追加到 `inbounds` 数组末尾，源配置不会被修改。`redirect` 或 `tproxy` 模式会生成 AndroidTProxyShell 的运行时副本，并强制与模块代理模式一致。
+
+分应用代理由 `sing-box.config` 中三个配置项控制：`app_proxy_enable`、`app_proxy_mode`（`whitelist` 或 `blacklist`）和 `auto_proxy_apps_enable`。白名单仅代理 `proxy_apps_list`，黑名单仅绕过 `bypass_apps_list`。自动生成默认关闭；开启后模块会在每次启动时获取当前 Android 用户的已安装包名，并和 v2rayNG 名单求交集。该来源并不适合作为通用规则，建议仅在白名单模式使用。
+
+自动或手动分流会生成互斥的代理与绕过集合：`redirect`/`tproxy` 只写入 ATP 实际读取的一侧名单；`tun` 和 `ebpf` 入站使用裸包名写入 `include_package` 和 `exclude_package`。当前按 Android 单用户处理，不生成 `userId:package` 条目。`force_proxy_app.txt` 总是强制代理，`force_bypass_app.txt` 总是强制绕过；两者不受以上三个开关影响。自定义入站的 `include_package`、`exclude_package` 在运行时由最终集合接管；不支持这两个字段的入站不会被改写。
 
 手动修改当前配置、模块设置或当前模式入站时，模块不会自动重启。`config.inotify` 会记录待重启状态，管理器的 [执行] 菜单会显示警告；从该菜单切换配置或更新当前远程订阅后，菜单会主动重启服务。
 
@@ -23,6 +27,9 @@ ColorOS 16 与 RedMagic OS 会在系统启动 60 秒后被检查；模块会移�
 
 - 模块配置：`/data/adb/sing-box_module/scripts/sing-box.config`
 - 透明代理配置：`/data/adb/sing-box_module/scripts/tproxy.conf`
+- 强制代理应用：`/data/adb/sing-box_module/scripts/force_proxy_app.txt`，每行一个包名
+- 强制白名单：`/data/adb/sing-box_module/scripts/force_bypass_app.txt`，每行一个包名
+- 自动代理应用名单：`/data/adb/sing-box_module/config/proxy_package_name`；构建时下载，也可从管理器 [执行] -> 配置管理手动更新
 - 订阅索引：`/data/adb/sing-box_module/scripts/subscription.json`
 - 完整配置：`/data/adb/sing-box_module/config/local/` 与 `/data/adb/sing-box_module/config/remote/`
 - 模式入站：`/data/adb/sing-box_module/config/inbounds/`；同名用户 JSON 优先于 `tpl/` 中的模板，并追加到完整配置的 `inbounds` 数组末尾；两处均不存在同名文件时不插入入站
@@ -42,6 +49,7 @@ su -c 'sh /data/adb/modules/sing-box_module/scripts/sing-box.service restart'
 - https://github.com/CHIZI-0618/box4magisk
 - https://github.com/CHIZI-0618/AndroidTProxyShell
 - https://github.com/CHIZI-0618/ColorOS-Google-Firewall-Fixer
+- https://github.com/2dust/v2rayNG（`proxy_package_name`，GPL-3.0）
 
 ## LICENSE
 

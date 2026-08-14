@@ -14,7 +14,7 @@ start_watchers() {
   inotifyd "$SCRIPTS_DIR/sing-box.inotify" "$MODDIR" >/dev/null 2>&1 &
   inotifyd "$SCRIPTS_DIR/net.inotify" /sys/class/net >/dev/null 2>&1 &
   inotifyd "$SCRIPTS_DIR/config.inotify" \
-    "$user_scripts_path" "$local_config_path" "$remote_config_path" "$user_inbounds_path" >/dev/null 2>&1 &
+    "$user_scripts_path" "$local_config_path" "$remote_config_path" "$user_inbounds_path" "$config_root" >/dev/null 2>&1 &
 }
 
 start_google_firewall_fixer() {

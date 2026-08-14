@@ -110,6 +110,19 @@ trap 'rm -rf "$STAGE"' EXIT
 cp -r "$MODULE_DIR/." "$STAGE/"
 find "$STAGE" -name .DS_Store -delete
 
+# ---------- 预置代理应用名单 ----------
+# 仅写入构建暂存目录，不将上游名单提交到仓库。
+PROXY_PACKAGE_LIST_URL="https://raw.githubusercontent.com/2dust/v2rayNG/master/V2rayNG/app/src/main/assets/proxy_package_name"
+info "下载预置代理应用名单 ..."
+mkdir -p "$STAGE/config"
+if download "$PROXY_PACKAGE_LIST_URL" "$STAGE/config/proxy_package_name.tmp" \
+  && awk '$0 ~ /^[A-Za-z][A-Za-z0-9_.]*$/ { found = 1 } END { exit !found }' "$STAGE/config/proxy_package_name.tmp"; then
+  mv -f "$STAGE/config/proxy_package_name.tmp" "$STAGE/config/proxy_package_name"
+else
+  rm -f "$STAGE/config/proxy_package_name.tmp"
+  warn "代理应用名单下载失败，自动生成分应用名单不可用"
+fi
+
 # ---------- 2. 组件 (内核 + jq 二进制, 均内置) ----------
 # 组件目录 $REPO_DIR/bin (含版本文件); 构建优先使用, 缺失/过旧自动下载
 BIN_DIR="$REPO_DIR/bin"

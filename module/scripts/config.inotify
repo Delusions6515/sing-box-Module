@@ -16,10 +16,12 @@ esac
 changed_path=""
 if [ "$monitor_dir" = "$user_scripts_path" ]; then
   case "$monitor_file" in
-    sing-box.config|tproxy.conf|subscription.json) changed_path="$monitor_dir/$monitor_file" ;;
+    sing-box.config|tproxy.conf|subscription.json|force_proxy_app.txt|force_bypass_app.txt) changed_path="$monitor_dir/$monitor_file" ;;
   esac
 elif [ "$monitor_dir" = "$user_inbounds_path" ]; then
   [ "$monitor_file" = "${proxy_mode}.json" ] && changed_path="$monitor_dir/$monitor_file"
+elif [ "$monitor_dir" = "$config_root" ]; then
+  [ "$monitor_file" = "proxy_package_name" ] && changed_path="$monitor_dir/$monitor_file"
 else
   if resolve_active_config >/dev/null 2>&1 && [ "$monitor_dir/$monitor_file" = "$active_config_path" ]; then
     changed_path="$active_config_path"

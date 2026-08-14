@@ -4,6 +4,7 @@
 SCRIPTS_DIR=$(dirname "$0")
 . "$SCRIPTS_DIR/lib.sh"
 load_config
+APP_LIST_TOOL="$SCRIPTS_DIR/app-list.sh"
 
 resolve_mode_inbound() {
   case "$proxy_mode" in
@@ -42,7 +43,14 @@ load_mode_inbound() {
       ' "$selected_inbound_path"
       ;;
     *)
-      "$_jq" -c 'if type != "object" then error("inbound must be an object") else . end' "$selected_inbound_path"
+      "$_jq" -c --rawfile include_package "$auto_proxy_apps_file" \
+        --rawfile exclude_package "$auto_bypass_apps_file" '
+        if type != "object" then error("inbound must be an object")
+        elif .type == "tun" or .type == "ebpf" then
+          .include_package = ($include_package | split("\n") | map(select(length > 0)))
+          | .exclude_package = ($exclude_package | split("\n") | map(select(length > 0)))
+        else . end
+      ' "$selected_inbound_path"
       ;;
   esac
 }
@@ -52,6 +60,10 @@ build_runtime_config() {
   [ -x "$_jq" ] || { echo "[Error] 缺少 jq: $_jq" >&2; return 1; }
   resolve_active_config || return 1
   mkdir -p "$runtime_config_dir" || return 1
+
+  if [ "$proxy_mode" != "none" ] && ! sh "$APP_LIST_TOOL" build; then
+    return 1
+  fi
 
   resolve_mode_inbound || return 1
   if [ -n "$selected_inbound_path" ]; then

@@ -41,7 +41,13 @@ load_config() {
   subscription_file="${user_scripts_path}/subscription.json"
   runtime_config_path="${runtime_config_dir}/config.json"
   runtime_tproxy_dir="${runtime_config_dir}/tproxy"
+  proxy_package_list_file="${config_root}/proxy_package_name"
+  force_proxy_apps_file="${user_scripts_path}/force_proxy_app.txt"
+  force_bypass_apps_file="${user_scripts_path}/force_bypass_app.txt"
+  auto_proxy_apps_file="${runtime_config_dir}/proxy_apps.list"
   auto_bypass_apps_file="${runtime_config_dir}/bypass_apps.list"
+  app_proxy_enabled_file="${runtime_config_dir}/app_proxy.enabled"
+  app_proxy_mode_file="${runtime_config_dir}/app_proxy.mode"
   service_pid_file="${run_path}/${bin_name:-sing-box}.pid"
   tproxy_state_file="${run_path}/tproxy.active"
 }

@@ -143,12 +143,30 @@ if [ ! -f "$USER_SCRIPTS_DIR/tproxy.conf" ]; then
   ui_print "- 写入默认配置 tproxy.conf"
   cp -f "$MODPATH/scripts/tproxy.conf" "$USER_SCRIPTS_DIR/tproxy.conf"
 fi
+if [ ! -f "$USER_SCRIPTS_DIR/force_proxy_app.txt" ]; then
+  ui_print "- 写入强制代理应用配置"
+  cp -f "$MODPATH/scripts/force_proxy_app.txt" "$USER_SCRIPTS_DIR/force_proxy_app.txt"
+fi
+if [ ! -f "$USER_SCRIPTS_DIR/force_bypass_app.txt" ]; then
+  ui_print "- 写入强制白名单配置"
+  cp -f "$MODPATH/scripts/force_bypass_app.txt" "$USER_SCRIPTS_DIR/force_bypass_app.txt"
+fi
+if [ ! -f "$CONFIG_DIR/proxy_package_name" ]; then
+  if [ -f "$MODPATH/config/proxy_package_name" ]; then
+    ui_print "- 写入预置代理应用名单"
+    cp -f "$MODPATH/config/proxy_package_name" "$CONFIG_DIR/proxy_package_name"
+  else
+    ui_print "! 模块未携带名单，启用自动生成前请在 [执行] 菜单更新"
+  fi
+fi
 
 # 权限
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 chmod 755 "$BIN_DIR/sing-box" 2>/dev/null
 set_perm "$USER_SCRIPTS_DIR/sing-box.config" 0 0 0600
 set_perm "$USER_SCRIPTS_DIR/tproxy.conf" 0 0 0600
+set_perm "$USER_SCRIPTS_DIR/force_proxy_app.txt" 0 0 0600
+set_perm "$USER_SCRIPTS_DIR/force_bypass_app.txt" 0 0 0600
 set_perm "$USER_SCRIPTS_DIR/subscription.json" 0 0 0600
 chmod ugo+x "$MODPATH"/*.sh "$MODPATH"/scripts/*.sh "$MODPATH"/scripts/sing-box.service "$MODPATH"/scripts/sing-box.inotify "$MODPATH"/scripts/config.inotify "$MODPATH"/scripts/net.inotify 2>/dev/null
 
