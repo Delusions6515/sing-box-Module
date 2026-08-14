@@ -13,7 +13,7 @@ start_watchers() {
   load_config
   inotifyd "$SCRIPTS_DIR/sing-box.inotify" "$MODDIR" >/dev/null 2>&1 &
   inotifyd "$SCRIPTS_DIR/config.inotify" \
-    "$user_scripts_path" "$local_config_path" "$remote_config_path" >/dev/null 2>&1 &
+    "$user_scripts_path" "$local_config_path" "$remote_config_path" "$user_inbounds_path" >/dev/null 2>&1 &
 }
 
 # 等待系统启动完成后再拉起服务

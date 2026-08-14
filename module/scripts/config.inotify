@@ -18,6 +18,8 @@ if [ "$monitor_dir" = "$user_scripts_path" ]; then
   case "$monitor_file" in
     sing-box.config|tproxy.conf|subscription.json) reload_needed=1 ;;
   esac
+elif [ "$monitor_dir" = "$user_inbounds_path" ]; then
+  [ "$monitor_file" = "${proxy_mode}.json" ] && reload_needed=1
 else
   if resolve_active_config >/dev/null 2>&1 && [ "$monitor_dir/$monitor_file" = "$active_config_path" ]; then
     reload_needed=1

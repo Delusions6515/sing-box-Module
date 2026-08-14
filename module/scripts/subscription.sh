@@ -13,7 +13,7 @@ require_jq() {
 
 ensure_subscription_store() {
   require_jq || return 1
-  mkdir -p "$user_scripts_path" "$local_config_path" "$remote_config_path" "$runtime_config_dir" "$run_path" || return 1
+  mkdir -p "$user_scripts_path" "$local_config_path" "$remote_config_path" "$user_inbounds_path" "$inbound_template_path" "$runtime_config_dir" "$run_path" || return 1
   if [ ! -f "$local_config_path/default.json" ]; then
     cp -f "$SCRIPTS_DIR/config.json.tpl" "$local_config_path/default.json" || return 1
   fi

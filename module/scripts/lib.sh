@@ -34,6 +34,8 @@ load_config() {
   config_root="${sing_box_path}/config"
   local_config_path="${config_root}/local"
   remote_config_path="${config_root}/remote"
+  user_inbounds_path="${config_root}/inbounds"
+  inbound_template_path="${user_inbounds_path}/tpl"
   runtime_config_dir="${config_root}/run"
   run_path="${sing_box_path}/run"
   subscription_file="${user_scripts_path}/subscription.json"

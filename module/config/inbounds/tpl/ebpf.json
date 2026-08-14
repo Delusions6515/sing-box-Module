@@ -1,0 +1,10 @@
+{
+  "type": "ebpf",
+  "tag": "ebpf-in",
+  "dns_mode": "hijack",
+  "redirect_address": ["127.128.0.0/9", "fd53:696e:672d:626f::/64"],
+  "bypass_private_address": true,
+  "bypass_rule_set": [],
+  "include_package": [],
+  "exclude_package": []
+}

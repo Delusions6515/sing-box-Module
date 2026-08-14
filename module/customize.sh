@@ -40,11 +40,13 @@ USER_SCRIPTS_DIR=$DATA_DIR/scripts
 CONFIG_DIR=$DATA_DIR/config
 LOCAL_CONFIG_DIR=$CONFIG_DIR/local
 REMOTE_CONFIG_DIR=$CONFIG_DIR/remote
+INBOUNDS_DIR=$CONFIG_DIR/inbounds
+INBOUND_TEMPLATE_DIR=$INBOUNDS_DIR/tpl
 RUNTIME_CONFIG_DIR=$CONFIG_DIR/run
 RUN_DIR=$DATA_DIR/run
 
 ui_print "- 初始化运行时目录 $DATA_DIR"
-mkdir -p "$BIN_DIR" "$USER_SCRIPTS_DIR" "$LOCAL_CONFIG_DIR" "$REMOTE_CONFIG_DIR" "$RUNTIME_CONFIG_DIR" "$RUN_DIR"
+mkdir -p "$BIN_DIR" "$USER_SCRIPTS_DIR" "$LOCAL_CONFIG_DIR" "$REMOTE_CONFIG_DIR" "$INBOUNDS_DIR" "$INBOUND_TEMPLATE_DIR" "$RUNTIME_CONFIG_DIR" "$RUN_DIR"
 
 # 音量键交互: 检测到已有二进制时询问是否用包内新版本覆盖
 # 0=音量+ 覆盖  1=音量-/超时 跳过
@@ -126,6 +128,13 @@ if [ ! -f "$USER_SCRIPTS_DIR/subscription.json" ]; then
     '  ]' \
     '}' >"$USER_SCRIPTS_DIR/subscription.json"
 fi
+
+# 入站模板位于 config/inbounds/tpl；用户可在 config/inbounds/ 放置同名 JSON 覆盖。
+for INBOUND_TEMPLATE in "$MODPATH"/config/inbounds/tpl/*.json; do
+  [ -f "$INBOUND_TEMPLATE" ] || continue
+  INBOUND_TARGET="$INBOUND_TEMPLATE_DIR/$(basename "$INBOUND_TEMPLATE")"
+  [ -f "$INBOUND_TARGET" ] || cp -f "$INBOUND_TEMPLATE" "$INBOUND_TARGET"
+done
 
 # AndroidTProxyShell (atp, 透明代理 iptables 规则): 配置模板 + 缺失兜底
 # atp 脚本随内置二进制一起拷贝 (首次/覆盖时); 此处仅补缺失 (旧版升级无 atp 时)

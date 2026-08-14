@@ -21,6 +21,7 @@
 - 透明代理配置：`/data/adb/sing-box_module/scripts/tproxy.conf`
 - 订阅索引：`/data/adb/sing-box_module/scripts/subscription.json`
 - 完整配置：`/data/adb/sing-box_module/config/local/` 与 `/data/adb/sing-box_module/config/remote/`
+- 模式入站：`/data/adb/sing-box_module/config/inbounds/`；同名用户 JSON 优先于 `tpl/` 中的模板，并追加到完整配置的 `inbounds` 数组末尾；两处均不存在同名文件时不插入入站
 - 派生运行配置：`/data/adb/sing-box_module/config/run/`
 - 日志与 PID：`/data/adb/sing-box_module/run/`
 
