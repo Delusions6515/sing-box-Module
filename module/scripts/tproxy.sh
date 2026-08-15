@@ -22,16 +22,16 @@ tproxy_command() {
 tproxy_runtime_dir="$runtime_tproxy_dir"
 local_bypass_chain="SB_MODULE_LOCAL_BYPASS"
 atp_log_file="$run_path/atp.log"
-atp_error_log_file="$run_path/atp_error.log"
 
 rotate_atp_logs() {
+  mkdir -p "$run_path" || return 1
   mv "$atp_log_file" "$atp_log_file.bak" >/dev/null 2>&1
-  mv "$atp_error_log_file" "$atp_error_log_file.bak" >/dev/null 2>&1
+  : >"$atp_log_file" || return 1
 }
 
 redirect_tproxy_output() {
   mkdir -p "$run_path" || return 1
-  exec >>"$atp_log_file" 2>>"$atp_error_log_file"
+  exec >>"$atp_log_file" 2>&1
 }
 
 cleanup_local_bypass_rules() {
@@ -173,7 +173,7 @@ tproxy_stop() {
 
 case "$1" in
   start)
-    rotate_atp_logs
+    rotate_atp_logs || exit 1
     redirect_tproxy_output || exit 1
     tproxy_start
     ;;
