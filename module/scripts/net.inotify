@@ -17,5 +17,4 @@ load_config
 # The rules are installed only while the AndroidTProxyShell adapter has an
 # active runtime configuration. Rebuilding a dedicated chain avoids appending
 # duplicate rules to AndroidTProxyShell's BYPASS_IP chains.
-sh "$SCRIPTS_DIR/tproxy.sh" refresh-local-bypass \
-  >>"$run_path/run.log" 2>>"$run_path/run_error.log"
+sh "$SCRIPTS_DIR/tproxy.sh" refresh-local-bypass

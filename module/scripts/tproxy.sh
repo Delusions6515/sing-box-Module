@@ -21,6 +21,18 @@ tproxy_command() {
 
 tproxy_runtime_dir="$runtime_tproxy_dir"
 local_bypass_chain="SB_MODULE_LOCAL_BYPASS"
+atp_log_file="$run_path/atp.log"
+atp_error_log_file="$run_path/atp_error.log"
+
+rotate_atp_logs() {
+  mv "$atp_log_file" "$atp_log_file.bak" >/dev/null 2>&1
+  mv "$atp_error_log_file" "$atp_error_log_file.bak" >/dev/null 2>&1
+}
+
+redirect_tproxy_output() {
+  mkdir -p "$run_path" || return 1
+  exec >>"$atp_log_file" 2>>"$atp_error_log_file"
+}
 
 cleanup_local_bypass_rules() {
   for _cmd in iptables ip6tables; do
@@ -137,7 +149,6 @@ tproxy_start() {
   tproxy_enabled || return 0
   _tproxy=$(tproxy_command)
   [ -f "$_tproxy" ] || { echo "[Error] 缺少 AndroidTProxyShell: $_tproxy" >&2; return 1; }
-  mkdir -p "$run_path" || return 1
   prepare_tproxy_config || return 1
   sh "$_tproxy" -d "$tproxy_runtime_dir" start || return 1
   : >"$tproxy_state_file"
@@ -161,9 +172,22 @@ tproxy_stop() {
 }
 
 case "$1" in
-  start) tproxy_start ;;
-  stop) tproxy_stop ;;
-  refresh-local-bypass) refresh_local_bypass_rules ;;
-  cleanup) cleanup_local_bypass_rules ;;
+  start)
+    rotate_atp_logs
+    redirect_tproxy_output || exit 1
+    tproxy_start
+    ;;
+  stop)
+    redirect_tproxy_output || exit 1
+    tproxy_stop
+    ;;
+  refresh-local-bypass)
+    redirect_tproxy_output || exit 1
+    refresh_local_bypass_rules
+    ;;
+  cleanup)
+    redirect_tproxy_output || exit 1
+    cleanup_local_bypass_rules
+    ;;
   *) echo "用法: $0 {start|stop|refresh-local-bypass|cleanup}" >&2; exit 2 ;;
 esac
