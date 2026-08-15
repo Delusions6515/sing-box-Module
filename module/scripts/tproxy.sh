@@ -5,6 +5,12 @@ SCRIPTS_DIR=$(dirname "$0")
 . "$SCRIPTS_DIR/lib.sh"
 load_config
 
+# Magisk/KernelSU/APatch 以 busybox ash standalone 模式执行模块脚本,
+# `command ip` 直接命中 busybox ip applet, 而 busybox ip rule 仅支持 table<=1023,
+# 会拒绝模块默认表 ID 2025。unset 后子进程 atp 的 sh 不再 standalone,
+# command ip 走 PATH 命中 iproute2 (/system/bin/ip)。
+unset ASH_STANDALONE 2>/dev/null
+
 tproxy_enabled() {
   [ "$proxy_mode" = "redirect" ] || [ "$proxy_mode" = "tproxy" ]
 }
