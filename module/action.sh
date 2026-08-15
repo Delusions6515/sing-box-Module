@@ -17,6 +17,7 @@ SCRIPTS_DIR="$MODDIR/scripts"
 
 GETEVENT=$(command -v getevent 2>/dev/null || echo /system/bin/getevent)
 TIMEOUT_BIN=$(command -v timeout 2>/dev/null || echo "")
+ACTION_SERVICE_STATUS=""
 
 # ============================================================
 # 低层 UI 辅助
@@ -54,6 +55,20 @@ clear_screen() {
   fi
 }
 
+# Cache the service state between TUI redraws.
+action_service_running() {
+  case "$ACTION_SERVICE_STATUS" in
+    running) [ -f "$service_pid_file" ] && return 0 ;;
+    stopped) [ ! -f "$service_pid_file" ] && return 1 ;;
+  esac
+  if service_running; then
+    ACTION_SERVICE_STATUS=running
+    return 0
+  fi
+  ACTION_SERVICE_STATUS=stopped
+  return 1
+}
+
 # 绘制菜单: 每次循环全量重绘 (参考 funbox 模块实现)
 draw_menu() {
   local title=$1
@@ -65,7 +80,7 @@ draw_menu() {
   echo "  音量下键 移动   音量上键 确认"
   echo "***************************************"
   echo ""
-  if service_running; then
+  if action_service_running; then
     echo "  状态: 运行中"
   else
     echo "  状态: 未运行"
@@ -187,6 +202,7 @@ run_op() {
   fi
   echo ""
   echo "== $title 结束 (退出码 $rc) =="
+  ACTION_SERVICE_STATUS=""
   return $rc
 }
 
