@@ -106,6 +106,11 @@ start_bin() {
     stop_core
     return 1
   fi
+  # ColorOS/RedMagic firewall fix
+  (
+    sh "$SCRIPTS_DIR/google-firewall-fixer.sh" apply \
+      >>"$run_path/run.log" 2>>"$run_path/run_error.log"
+  ) &
 
   # 记录本次启动时间 (供配置修改提醒)
   rm -f "$run_path/.config-changed"

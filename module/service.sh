@@ -30,25 +30,11 @@ start_watchers() {
   inotifyd "$SCRIPTS_DIR/net.inotify" /data/misc/net >/dev/null 2>&1 &
 }
 
-start_google_firewall_fixer() {
-  # ColorOS/RedMagic loads its default firewall rules late in boot.
-  . "$SCRIPTS_DIR/lib.sh"
-  load_config
-  mkdir -p "$run_path"
-  (
-    sleep 60
-    [ -f "$MODDIR/disable" ] && exit 0
-    sh "$SCRIPTS_DIR/google-firewall-fixer.sh" apply \
-      >>"$run_path/run.log" 2>>"$run_path/run_error.log"
-  ) &
-}
-
 # 等待系统启动完成后再拉起服务
 (
   until [ "$(getprop sys.boot_completed)" = "1" ]; do
     sleep 3
   done
   sh "$SCRIPTS_DIR/start.sh"
-  start_google_firewall_fixer
   start_watchers
 ) &
