@@ -81,13 +81,43 @@ resolve_active_config() {
 }
 
 # ---------- 状态检测 ----------
-service_running() {
-  [ -f "$service_pid_file" ] || return 1
-  _service_pid=$(cat "$service_pid_file" 2>/dev/null)
-  case "$_service_pid" in
-    ''|*[!0-9]*) rm -f "$service_pid_file"; return 1 ;;
+service_process_matches() { # $1=pid
+  [ -r "/proc/$1/cmdline" ] || return 1
+  _service_cmdline=$(tr '\000' ' ' <"/proc/$1/cmdline" 2>/dev/null)
+  case "$_service_cmdline" in
+    *"$bin_path"*"run -c $runtime_config_path"*) return 0 ;;
   esac
-  if kill -0 "$_service_pid" 2>/dev/null; then
+  return 1
+}
+
+find_service_pid() {
+  for _service_proc in /proc/[0-9]*; do
+    _service_pid=${_service_proc#/proc/}
+    service_process_matches "$_service_pid" && {
+      printf '%s\n' "$_service_pid"
+      return 0
+    }
+  done
+  return 1
+}
+
+service_running() {
+  _service_pid=""
+  if [ -f "$service_pid_file" ]; then
+    _service_pid=$(cat "$service_pid_file" 2>/dev/null)
+  fi
+  case "$_service_pid" in
+    *[!0-9]*|'') _service_pid="" ;;
+  esac
+  if [ -n "$_service_pid" ] \
+    && kill -0 "$_service_pid" 2>/dev/null \
+    && service_process_matches "$_service_pid"; then
+    return 0
+  fi
+
+  _service_pid=$(find_service_pid)
+  if [ -n "$_service_pid" ]; then
+    printf '%s\n' "$_service_pid" >"$service_pid_file" 2>/dev/null
     return 0
   fi
   rm -f "$service_pid_file"

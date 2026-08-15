@@ -30,6 +30,18 @@ log() {
 CONFIG_BUILDER="$SCRIPTS_DIR/config-builder.sh"
 TPROXY_ADAPTER="$SCRIPTS_DIR/tproxy.sh"
 
+prepare_runtime_config() {
+  if ! sh "$CONFIG_BUILDER" build; then
+    log Error "运行配置生成失败"
+    return 1
+  fi
+  if ! "$bin_path" check -c "$runtime_config_path" \
+    >>"$run_path/${bin_name}.log" 2>>"$run_path/${bin_name}_error.log"; then
+    log Error "配置检查失败, 未启动 ${bin_name}"
+    return 1
+  fi
+}
+
 stop_core() {
   if ! service_running; then
     return 0
@@ -41,11 +53,19 @@ stop_core() {
     sleep 1
     _wait=$((_wait + 1))
   done
-  kill -0 "$_pid" 2>/dev/null && kill -9 "$_pid" 2>/dev/null
+  if kill -0 "$_pid" 2>/dev/null; then
+    kill -9 "$_pid" 2>/dev/null
+    sleep 1
+  fi
+  if kill -0 "$_pid" 2>/dev/null; then
+    log Error "${bin_name} 未能停止 (pid $_pid), 保留 PID 状态"
+    return 1
+  fi
   rm -f "$service_pid_file"
 }
 
 start_bin() {
+  _runtime_prepared=${1:-0}
   if service_running; then
     log Warn "${bin_name} 已在运行, 跳过启动"
     return 0
@@ -66,15 +86,7 @@ start_bin() {
 
   # Every start receives a generated copy under config/run/. User complete
   # configurations are never modified.
-  if ! sh "$CONFIG_BUILDER" build; then
-    log Error "运行配置生成失败"
-    return 1
-  fi
-  if ! "$bin_path" check -c "$runtime_config_path" \
-    >>"$run_path/${bin_name}.log" 2>>"$run_path/${bin_name}_error.log"; then
-    log Error "配置检查失败, 未启动 ${bin_name}"
-    return 1
-  fi
+  [ "$_runtime_prepared" = "1" ] || prepare_runtime_config || return 1
 
   mv "$run_path/${bin_name}.log" "$run_path/${bin_name}.log.bak" >/dev/null 2>&1
   mv "$run_path/${bin_name}_error.log" "$run_path/${bin_name}_error.log.bak" >/dev/null 2>&1
@@ -120,9 +132,14 @@ case "$1" in
     stop_service
     ;;
   restart)
-    stop_service
+    _runtime_prepared=0
+    if service_running; then
+      prepare_runtime_config || exit 1
+      _runtime_prepared=1
+      stop_service || exit 1
+    fi
     sleep 2
-    start_bin
+    start_bin "$_runtime_prepared"
     ;;
   status)
     if service_running; then

@@ -91,6 +91,7 @@ build_runtime_config() {
   [ -x "$_jq" ] || { echo "[Error] 缺少 jq: $_jq" >&2; return 1; }
   resolve_active_config || return 1
   mkdir -p "$runtime_config_dir" || return 1
+  _runtime_config_tmp="${runtime_config_path}.$$.new"
 
   if [ "$proxy_mode" != "none" ] && ! sh "$APP_LIST_TOOL" build; then
     return 1
@@ -100,17 +101,21 @@ build_runtime_config() {
   if [ -n "$selected_inbound_path" ]; then
     _inbound=$(load_mode_inbound "$_jq") || return 1
     _filter='if (.inbounds // [] | type) != "array" then error("inbounds must be an array") else . end | .inbounds = ((.inbounds // []) + [$inbound])'
-    "$_jq" --argjson inbound "$_inbound" "$_filter" "$active_config_path" >"$runtime_config_path.new" || {
-      rm -f "$runtime_config_path.new"
+    "$_jq" --argjson inbound "$_inbound" "$_filter" "$active_config_path" >"$_runtime_config_tmp" || {
+      rm -f "$_runtime_config_tmp"
       return 1
     }
   else
-    "$_jq" . "$active_config_path" >"$runtime_config_path.new" || {
-      rm -f "$runtime_config_path.new"
+    "$_jq" . "$active_config_path" >"$_runtime_config_tmp" || {
+      rm -f "$_runtime_config_tmp"
       return 1
     }
   fi
-  mv -f "$runtime_config_path.new" "$runtime_config_path"
+  mv -f "$_runtime_config_tmp" "$runtime_config_path" || {
+    rm -f "$_runtime_config_tmp"
+    echo "[Error] 无法替换运行配置: $runtime_config_path" >&2
+    return 1
+  }
 }
 
 case "$1" in
