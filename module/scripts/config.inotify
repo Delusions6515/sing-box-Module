@@ -23,9 +23,10 @@ elif [ "$monitor_dir" = "$user_inbounds_path" ]; then
 elif [ "$monitor_dir" = "$config_root" ]; then
   [ "$monitor_file" = "proxy_package_name" ] && changed_path="$monitor_dir/$monitor_file"
 else
-  if resolve_active_config >/dev/null 2>&1 && [ "$monitor_dir/$monitor_file" = "$active_config_path" ]; then
-    changed_path="$active_config_path"
-  fi
+  # resolve 会因活动配置被删除而失败, 但 active_config_path 已先行赋值;
+  # 单独比较路径, 让纯删除也能产生提醒 (否则下次重启静默失败)。
+  resolve_active_config >/dev/null 2>&1
+  [ "$monitor_dir/$monitor_file" = "$active_config_path" ] && changed_path="$active_config_path"
 fi
 
 [ -n "$changed_path" ] || exit 0
@@ -36,5 +37,3 @@ fi
 mkdir "$run_path" 2>/dev/null
 [ -f "$run_path/.config-changed" ] && exit 0
 : >"$run_path/.config-changed"
-echo "[Warn] 检测到配置已修改，服务尚未重启；请在管理器 [执行] 菜单手动重启后生效。" \
-  >>"$run_path/run.log"
