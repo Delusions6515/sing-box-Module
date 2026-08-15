@@ -17,6 +17,8 @@ wait_until_login() {
     sleep 1
   done
   rm -f "$test_file"
+  # 等待包管理服务就绪
+  while [ ! -f /data/system/packages.xml ]; do sleep 1; done
 }
 wait_until_login
 
