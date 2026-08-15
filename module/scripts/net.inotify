@@ -2,6 +2,8 @@
 # Rebuild local-address bypass rules after network interfaces change.
 # Monitored dir is /data/misc/net (sysfs does not support inotify).
 
+events=$1
+
 # Only respond to write events; netd touches the dir frequently.
 case "$events" in
   *w*) : ;;
