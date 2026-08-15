@@ -12,9 +12,12 @@ start_watchers() {
   . "$SCRIPTS_DIR/lib.sh"
   load_config
   inotifyd "$SCRIPTS_DIR/sing-box.inotify" "$MODDIR" >/dev/null 2>&1 &
-  inotifyd "$SCRIPTS_DIR/net.inotify" /sys/class/net >/dev/null 2>&1 &
   inotifyd "$SCRIPTS_DIR/config.inotify" \
     "$user_scripts_path" "$local_config_path" "$remote_config_path" "$user_inbounds_path" "$config_root" >/dev/null 2>&1 &
+  while [ ! -f /data/misc/net/rt_tables ] ; do
+    sleep 3
+  done
+  inotifyd "$SCRIPTS_DIR/net.inotify" /data/misc/net >/dev/null 2>&1 &
 }
 
 start_google_firewall_fixer() {
