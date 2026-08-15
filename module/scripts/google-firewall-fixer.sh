@@ -31,6 +31,9 @@ remove_block_rules() { # $1=iptables command, $2=chain
 
 apply_fix() {
   mkdir -p "$run_path" || return 1
+  if [ -f $firewall_log ]; then
+    mv -f $firewall_log "$firewall_log.bak"
+  fi
   log_fix "开始清理 ColorOS/RedMagic Google 服务拦截规则"
   for _chain in $firewall_chains; do
     remove_block_rules iptables "$_chain"
