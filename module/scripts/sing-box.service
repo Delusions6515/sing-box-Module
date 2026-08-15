@@ -71,13 +71,10 @@ start_bin() {
     return 0
   fi
 
-  # 内核二进制缺失时尝试从内置渠道安装
+  # 内核二进制缺失时
   if [ ! -f "$bin_path" ]; then
-    log Info "未找到内核二进制, 尝试自动下载 ..."
-    sh "$SCRIPTS_DIR/update_kernel.sh" || {
-      log Error "内核下载失败, 请使用 [执行] 菜单手动更新"
-      return 1
-    }
+    log Error "未找到内核二进制"
+    return 1
   fi
 
   log Info "starting ${bin_name} service."
