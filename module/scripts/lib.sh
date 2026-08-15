@@ -85,7 +85,7 @@ service_process_matches() { # $1=pid
   [ -r "/proc/$1/cmdline" ] || return 1
   _service_cmdline=$(tr '\000' ' ' <"/proc/$1/cmdline" 2>/dev/null)
   case "$_service_cmdline" in
-    *"$bin_path"*"run -c $runtime_config_path"*) return 0 ;;
+    *"$bin_path"*"run"*"-c $runtime_config_path"*) return 0 ;;
   esac
   return 1
 }
