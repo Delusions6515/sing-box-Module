@@ -103,6 +103,7 @@ jobs:
           TARGET_ABI: ${{ matrix.abi }}
           KERNEL_CHANNEL: ${{ inputs.kernel-channel || 'refind-pre' }}
           BUILD_TYPE: ${{ needs.metadata.outputs.build-type }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           ./build.sh "${{ needs.metadata.outputs.version }}"
           ls -lh build/*.zip
