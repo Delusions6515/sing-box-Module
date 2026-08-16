@@ -1,0 +1,206 @@
+name: Build sing-box module
+
+on:
+  workflow_dispatch:
+    inputs:
+      abi:
+        description: 'Target ABI (all = all four architectures)'
+        default: all
+        type: choice
+        options: [all, arm64-v8a, armeabi-v7a, x86_64, x86]
+      version:
+        description: 'Base version (blank uses the git tag, e.g. v1.0.0)'
+        default: ''
+      kernel-channel:
+        description: 'sing-box kernel channel'
+        default: refind-pre
+        type: choice
+        options: [refind-pre, refind-stable, official-pre, official-stable]
+  push:
+    branches: [main, dev]
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      abi-matrix: ${{ steps.meta.outputs.abi-matrix }}
+      version: ${{ steps.meta.outputs.version }}
+      build-type: ${{ steps.meta.outputs.build-type }}
+      is-tag: ${{ steps.meta.outputs.is-tag }}
+      is-prerelease: ${{ steps.meta.outputs.is-prerelease }}
+      publish-update-json: ${{ steps.meta.outputs.publish-update-json }}
+    steps:
+      - id: meta
+        shell: bash
+        run: |
+          if [ "${{ inputs.abi || 'all' }}" = "all" ]; then
+            echo 'abi-matrix=["arm64-v8a","armeabi-v7a","x86_64","x86"]' >> "$GITHUB_OUTPUT"
+          else
+            printf 'abi-matrix=["%s"]\n' "${{ inputs.abi }}" >> "$GITHUB_OUTPUT"
+          fi
+
+          tag="${GITHUB_REF_NAME:-}"
+          version="${{ inputs.version }}"
+          if [ -z "$version" ] && [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="$tag"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          is_tag=false
+          is_prerelease=false
+          publish_update_json=false
+          build_type=release
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            || [ "${{ github.ref }}" = "refs/heads/main" ] \
+            || [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            build_type=canary
+          elif [[ "$version" =~ -(alpha|beta|rc)([.-]|$) ]]; then
+            is_prerelease=true
+            build_type=prerelease
+          elif [[ "$version" == *-hotfix* ]]; then
+            build_type=hotfix
+          fi
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            is_tag=true
+            if [ "$is_prerelease" = "false" ]; then
+              publish_update_json=true
+            fi
+          fi
+
+          echo "is-tag=$is_tag" >> "$GITHUB_OUTPUT"
+          echo "is-prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
+          echo "publish-update-json=$publish_update_json" >> "$GITHUB_OUTPUT"
+          echo "build-type=$build_type" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: metadata
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: ${{ fromJSON(needs.metadata.outputs.abi-matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y zip unzip xz-utils
+
+      - name: Cache downloaded components
+        uses: actions/cache@v6
+        with:
+          path: bin
+          key: components-${{ runner.os }}-${{ matrix.abi }}-${{ inputs.kernel-channel || 'refind-pre' }}
+
+      - name: Build module
+        env:
+          TARGET_ABI: ${{ matrix.abi }}
+          KERNEL_CHANNEL: ${{ inputs.kernel-channel || 'refind-pre' }}
+          BUILD_TYPE: ${{ needs.metadata.outputs.build-type }}
+        run: |
+          ./build.sh "${{ needs.metadata.outputs.version }}"
+          ls -lh build/*.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sing-box-module-${{ matrix.abi }}
+          path: build/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: [metadata, build]
+    if: needs.metadata.outputs.is-tag == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate release notes
+        env:
+          TAG: ${{ github.ref_name }}
+          BUILD_TYPE: ${{ needs.metadata.outputs.build-type }}
+        run: |
+          {
+            python3 gen-changelog.py --tag "$TAG" --build-type "$BUILD_TYPE"
+            printf '\nBuild: %s/%s/actions/runs/%s\n' \
+              "${{ github.server_url }}" "${{ github.repository }}" "${{ github.run_id }}"
+          } > release-notes.md
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.metadata.outputs.is-prerelease }}
+        run: |
+          args=(--title "sing-box for Android $TAG")
+          [ "$PRERELEASE" = "true" ] && args+=(--prerelease --latest=false)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" "${args[@]}" --notes-file release-notes.md
+            gh release upload "$TAG" dist/*.zip --clobber
+          else
+            gh release create "$TAG" "${args[@]}" --notes-file release-notes.md dist/*.zip
+          fi
+
+  update-json:
+    needs: [metadata, release]
+    if: needs.metadata.outputs.publish-update-json == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Generate update JSON and changelog
+        env:
+          TAG: ${{ github.ref_name }}
+          BUILD_TYPE: ${{ needs.metadata.outputs.build-type }}
+        run: |
+          version="${TAG#v}"
+          code=$(git rev-list HEAD --count)
+          sha=$(git rev-parse --short HEAD)
+          mkdir json-out
+          for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+            zip="sing-box-module-${version}-${code}-${sha}-${BUILD_TYPE}-${abi}.zip"
+            cat > "json-out/update-${abi}.json" <<JSON
+          {
+            "version": "$version",
+            "versionCode": $code,
+            "zipUrl": "https://github.com/${{ github.repository }}/releases/download/$TAG/$zip",
+            "changelog": "https://raw.githubusercontent.com/${{ github.repository }}/gh-pages/CHANGELOG.md"
+          }
+          JSON
+          done
+          python3 gen-changelog.py --stable-only --with-hotfix > json-out/CHANGELOG.md
+
+      - name: Publish to gh-pages branch
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch origin gh-pages:gh-pages 2>/dev/null; then
+            git checkout gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf --cached . >/dev/null 2>&1 || git rm -rf . >/dev/null 2>&1 || true
+          fi
+          cp json-out/update-*.json json-out/CHANGELOG.md .
+          git add update-*.json CHANGELOG.md
+          if git commit -m "update json and changelog: $TAG"; then
+            git push origin gh-pages
+          else
+            echo "update json and changelog unchanged; skipping push"
+          fi
