@@ -7,7 +7,7 @@
 # 操作方式 (与常见模块一致):
 #   音量下键  移动到下一个选项
 #   音量上键  确认当前选项
-#   5 分钟无按键自动退出
+#   20 秒无按键自动退出
 # ============================================================
 
 # ---------- 环境初始化 ----------
@@ -23,7 +23,7 @@ ACTION_SERVICE_STATUS=""
 # 低层 UI 辅助
 # ============================================================
 
-# 读取音量键: 0=VOL+ 1=VOL- 2=超时 3=BACK(退出)
+# 读取音量键: 0=VOL+ 1=VOL- 2=超时 3=物理 BACK(退出)
 # 内部消费 UP 等无关事件, 避免一次按键导致菜单重复刷新
 read_vol() {
   local line=""
@@ -78,6 +78,7 @@ draw_menu() {
   echo "***************************************"
   echo "  sing-box for Android - 执行菜单"
   echo "  音量下键 移动   音量上键 确认"
+  echo "  请使用菜单退出；管理器返回键不会终止脚本"
   echo "***************************************"
   echo ""
   if action_service_running; then
@@ -133,13 +134,13 @@ pick() {
         ;;
       2) # 超时
         idle=$((idle + 1))
-        if [ "$idle" -ge 60 ]; then
+        if [ "$idle" -ge 4 ]; then
           echo ""
-          echo "[超时] 5 分钟未检测到按键, 已退出"
+          echo "[超时] 20 秒未检测到按键, 已退出"
           exit 0
         fi
         ;;
-      3) # 管理器返回键
+      3) # 输入设备上报的物理 BACK 键
         echo ""
         echo "已退出"
         exit 0
@@ -147,6 +148,33 @@ pick() {
       *) : ;; # 其它输入事件, 忽略
     esac
   done
+}
+
+# ---------- 单实例: 新 action 终止本模块上一次 action ----------
+stop_action_instance() {
+  local owner_pid
+  if [ -f "$ACTION_PID_FILE" ] && read -r owner_pid _ <"$ACTION_PID_FILE" \
+    && [ "$owner_pid" = "$$" ]; then
+    rm -f "$ACTION_PID_FILE"
+  fi
+}
+
+start_action_instance() {
+  ACTION_PID_FILE="$run_path/action.pid"
+  local old_pid old_start current_start
+  if [ -f "$ACTION_PID_FILE" ] && read -r old_pid old_start <"$ACTION_PID_FILE" \
+    && [ -n "$old_pid" ] && [ -n "$old_start" ]; then
+    current_start=$(awk '{print $22}' "/proc/$old_pid/stat" 2>/dev/null)
+    if [ "$current_start" = "$old_start" ]; then
+      kill "$old_pid" 2>/dev/null
+      echo "[提示] 已终止本模块上一次执行菜单"
+    fi
+  fi
+
+  mkdir -p "$run_path"
+  echo "$$ $(awk '{print $22}' /proc/$$/stat 2>/dev/null)" >"$ACTION_PID_FILE"
+  trap 'exit 0' HUP INT TERM
+  trap stop_action_instance EXIT
 }
 
 # ============================================================
@@ -339,6 +367,7 @@ main_menu() {
 # 启动入口
 # ============================================================
 load_config
+start_action_instance
 main_menu
 
 echo ""
