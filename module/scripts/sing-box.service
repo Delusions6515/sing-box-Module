@@ -29,6 +29,8 @@ log() {
 
 CONFIG_BUILDER="$SCRIPTS_DIR/config-builder.sh"
 TPROXY_ADAPTER="$SCRIPTS_DIR/tproxy.sh"
+START_MAX_ATTEMPTS=2
+START_CHECK_SECONDS=2
 
 prepare_runtime_config() {
   if ! sh "$CONFIG_BUILDER" build; then
@@ -42,26 +44,83 @@ prepare_runtime_config() {
   fi
 }
 
-stop_core() {
-  if ! service_running; then
-    return 0
-  fi
-  _pid=$(cat "$service_pid_file")
-  kill -15 "$_pid" 2>/dev/null
+wait_for_exit() { # $1=pid, $2=timeout seconds
+  _pid=$1
+  _timeout=$2
   _wait=0
-  while kill -0 "$_pid" 2>/dev/null && [ "$_wait" -lt 5 ]; do
+  while kill -0 "$_pid" 2>/dev/null; do
+    [ "$_wait" -ge "$_timeout" ] && return 1
     sleep 1
     _wait=$((_wait + 1))
   done
-  if kill -0 "$_pid" 2>/dev/null; then
+}
+
+stop_core() {
+  service_running || return 0
+
+  _pid=$(cat "$service_pid_file")
+  kill -15 "$_pid" 2>/dev/null
+  if ! wait_for_exit "$_pid" 5; then
+    log Warn "${bin_name} 未在 5 秒内停止 (pid $_pid), 强制结束"
     kill -9 "$_pid" 2>/dev/null
-    sleep 1
   fi
-  if kill -0 "$_pid" 2>/dev/null; then
+  if ! wait_for_exit "$_pid" 2; then
     log Error "${bin_name} 未能停止 (pid $_pid), 保留 PID 状态"
     return 1
   fi
+
   rm -f "$service_pid_file"
+}
+
+wait_for_core_start() { # $1=pid
+  _pid=$1
+  _wait=0
+  while [ "$_wait" -lt "$START_CHECK_SECONDS" ]; do
+    kill -0 "$_pid" 2>/dev/null || return 1
+    sleep 1
+    _wait=$((_wait + 1))
+  done
+  kill -0 "$_pid" 2>/dev/null && service_process_matches "$_pid"
+}
+
+start_core() {
+  _attempt=1
+  mv "$run_path/${bin_name}.log" "$run_path/${bin_name}.log.bak" >/dev/null 2>&1
+  : >"$run_path/${bin_name}.log" || {
+    log Error "无法写入 ${bin_name} 日志"
+    return 1
+  }
+
+  while [ "$_attempt" -le "$START_MAX_ATTEMPTS" ]; do
+    nohup "$bin_path" run --disable-color -c "$runtime_config_path" -D "$run_path" \
+      >>"$run_path/${bin_name}.log" 2>&1 &
+    _pid=$!
+    if wait_for_core_start "$_pid"; then
+      if printf '%s\n' "$_pid" >"$service_pid_file"; then
+        return 0
+      fi
+      log Error "无法写入 ${bin_name} PID 文件"
+      kill -15 "$_pid" 2>/dev/null
+      wait_for_exit "$_pid" 2 || kill -9 "$_pid" 2>/dev/null
+      return 1
+    fi
+
+    # A surviving but mismatched child is not a usable core and must not make
+    # wait block forever before the retry.
+    if kill -0 "$_pid" 2>/dev/null; then
+      kill -15 "$_pid" 2>/dev/null
+      wait_for_exit "$_pid" 2 || kill -9 "$_pid" 2>/dev/null
+    fi
+    wait "$_pid" 2>/dev/null
+    if [ "$_attempt" -lt "$START_MAX_ATTEMPTS" ]; then
+      log Warn "${bin_name} 启动未就绪, 1 秒后重试 ($_attempt/$START_MAX_ATTEMPTS)"
+      sleep 1
+    fi
+    _attempt=$((_attempt + 1))
+  done
+
+  log Error "${bin_name} 启动失败, 查看 $run_path/${bin_name}.log"
+  return 1
 }
 
 start_bin() {
@@ -71,58 +130,52 @@ start_bin() {
     return 0
   fi
 
-  # 内核二进制缺失时
   if [ ! -f "$bin_path" ]; then
     log Error "未找到内核二进制"
     return 1
   fi
+  if ! chmod 755 "$bin_path"; then
+    log Error "无法设置内核二进制权限"
+    return 1
+  fi
+
+  # 用户源配置从不被修改；仅对派生运行配置做校验。
+  [ "$_runtime_prepared" = "1" ] || prepare_runtime_config || return 1
 
   log Info "starting ${bin_name} service."
   ulimit -SHn 1000000 2>/dev/null || log Warn "无法提高文件描述符上限, 使用系统限制"
-  chmod 755 "$bin_path"
+  start_core || return 1
 
-  # Every start receives a generated copy under config/run/. User complete
-  # configurations are never modified.
-  [ "$_runtime_prepared" = "1" ] || prepare_runtime_config || return 1
-
-  mv "$run_path/${bin_name}.log" "$run_path/${bin_name}.log.bak" >/dev/null 2>&1
-
-  nohup "$bin_path" run --disable-color -c "$runtime_config_path" -D "$run_path" \
-    >"$run_path/${bin_name}.log" 2>&1 &
-  local pid=$!
-  sleep 2
-
-  if ! kill -0 "$pid" 2>/dev/null; then
-    log Error "${bin_name} 启动失败, 查看 $run_path/${bin_name}.log"
-    return 1
-  fi
-  echo "$pid" >"$service_pid_file"
-
-  # Apply rules only after the core is known alive. A rules failure rolls back
-  # the core to avoid an apparently running service without proxy coverage.
+  # Rules are installed only after the core has passed its startup check.
   if ! sh "$TPROXY_ADAPTER" start; then
     log Error "透明代理规则装载失败, 回滚核心进程"
-    stop_core
+    sh "$TPROXY_ADAPTER" stop || log Error "透明代理规则回滚失败"
+    stop_core || log Error "核心进程回滚失败"
     return 1
   fi
-  # ColorOS/RedMagic firewall fix
+
   (
     sh "$SCRIPTS_DIR/google-firewall-fixer.sh" apply \
       >>"$run_path/run.log" 2>>"$run_path/run_error.log"
   ) &
 
-  # 记录本次启动时间 (供配置修改提醒)
   rm -f "$run_path/.config-changed"
   date '+%Y-%m-%d %H:%M:%S' > "$run_path/.start_marker" 2>/dev/null
-
-  log Info "${bin_name} 已启动 (pid $pid)"
+  log Info "${bin_name} 已启动 (pid $(cat "$service_pid_file"))"
   return 0
 }
 
 stop_service() {
   log Warn "stopping ${bin_name} service."
-  sh "$TPROXY_ADAPTER" stop || log Warn "透明代理规则清理失败"
-  stop_core
+  if ! stop_core; then
+    log Error "核心进程停止失败, 保留透明代理规则"
+    return 1
+  fi
+  if ! sh "$TPROXY_ADAPTER" stop; then
+    log Error "透明代理规则清理失败"
+    return 1
+  fi
+  return 0
 }
 
 case "$1" in
@@ -139,7 +192,6 @@ case "$1" in
       _runtime_prepared=1
       stop_service || exit 1
     fi
-    sleep 2
     start_bin "$_runtime_prepared"
     ;;
   status)
