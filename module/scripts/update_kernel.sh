@@ -4,14 +4,14 @@
 # 从指定渠道下载 sing-box 二进制并原子替换。
 #
 # 渠道 (channel):
-#   refind-pre         reF1nd/sing-box-releases 最新 pre-release (默认)
-#   refind-stable      reF1nd/sing-box-releases 最新稳定版
+#   ref1nd-pre         reF1nd/sing-box-releases 最新 pre-release (默认)
+#   ref1nd-stable      reF1nd/sing-box-releases 最新稳定版
 #   official-stable    SagerNet/sing-box 最新稳定版
 #   official-pre       SagerNet/sing-box 最新 pre-release
 #
 # 用法:
 #   update_kernel.sh [channel] [abi]
-#     channel  渠道名 (默认读配置或 refind-pre)
+#     channel  渠道名 (默认读配置或 ref1nd-pre)
 #     abi      arm64-v8a | armeabi-v7a | x86_64 | x86 (默认读配置或 arm64-v8a)
 #
 # 环境变量:
@@ -98,13 +98,13 @@ if [ -z "$CHANNEL" ] || [ -z "$ABI" ]; then
     # shellcheck disable=SC1090
     . "$SCRIPTS_DIR/sing-box.config" 2>/dev/null
   fi
-  [ -z "$CHANNEL" ] && CHANNEL="${kernel_channel:-refind-pre}"
+  [ -z "$CHANNEL" ] && CHANNEL="${kernel_channel:-ref1nd-pre}"
   [ -z "$ABI" ] && ABI="${kernel_abi:-arm64-v8a}"
 fi
 
 case "$CHANNEL" in
-  delusions6515-pre|delusions6515-stable|refind-pre|refind-stable|official-stable|official-pre) : ;;
-  *) err "未知渠道: $CHANNEL (delusions6515-pre|delusions6515-stable|refind-pre|refind-stable|official-stable|official-pre)"; exit 2 ;;
+  delusions6515-pre|delusions6515-stable|ref1nd-pre|ref1nd-stable|official-stable|official-pre) : ;;
+  *) err "未知渠道: $CHANNEL (delusions6515-pre|delusions6515-stable|ref1nd-pre|ref1nd-stable|official-stable|official-pre)"; exit 2 ;;
 esac
 
 ARCH=$(singbox_arch "$ABI")
@@ -116,7 +116,7 @@ fi
 # ---------- 渠道 -> 仓库 ----------
 case "$CHANNEL" in
   delusions6515-*)  REPO="Delusions6515/sing-box-releases";;
-  refind-*)         REPO="reF1nd/sing-box-releases" ;;
+  ref1nd-*)         REPO="reF1nd/sing-box-releases" ;;
   official-*)       REPO="SagerNet/sing-box" ;;
 esac
 # pre-release 渠道: 1=取最新 pre-release; 0=取最新稳定版

@@ -330,8 +330,8 @@ kernel_menu() {
       1) run_op "更新内核" update sh "$SCRIPTS_DIR/update_kernel.sh" "$kernel_channel" "$kernel_abi" ;;
       2) switch_channel delusions6515-pre ;;
       3) switch_channel delusions6515-stable ;;
-      2) switch_channel refind-pre ;;
-      3) switch_channel refind-stable ;;
+      2) switch_channel ref1nd-pre ;;
+      3) switch_channel ref1nd-stable ;;
       4) switch_channel official-stable ;;
       5) switch_channel official-pre ;;
       6) return ;;

@@ -15,7 +15,7 @@ on:
         description: 'sing-box kernel channel'
         default: delusions6515-pre
         type: choice
-        options: [delusions6515-pre, delusions6515-stable, refind-pre, refind-stable, official-pre, official-stable]
+        options: [delusions6515-pre, delusions6515-stable, ref1nd-pre, ref1nd-stable, official-pre, official-stable]
   push:
     branches: [main, dev]
     tags: ['v*']
@@ -96,7 +96,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: bin
-          key: components-${{ runner.os }}-${{ matrix.abi }}-${{ inputs.kernel-channel || 'refind-pre' }}
+          key: components-${{ runner.os }}-${{ matrix.abi }}-${{ inputs.kernel-channel || 'delusions6515-pre' }}
 
       - name: Build module
         env:

@@ -4,7 +4,7 @@
 # 内核二进制从指定渠道在线获取并内置进模块 zip, 可直接在 GitHub Actions 中运行。
 #
 # 用法:
-#   ./build.sh                 # 版本名取最近 git tag (如 v1.0.0), 默认 arm64-v8a / refind-pre
+#   ./build.sh                 # 版本名取最近 git tag (如 v1.0.0), 默认 arm64-v8a / delusions6515-pre
 #   ./build.sh 1.0.0           # 指定版本名覆盖 tag
 #   ./build.sh 1.0.0 out.zip   # 指定版本名和输出路径
 #
@@ -14,7 +14,7 @@
 #
 # 环境变量:
 #   TARGET_ABI      目标 ABI: arm64-v8a(默认)|armeabi-v7a|x86_64|x86
-#   KERNEL_CHANNEL  内核渠道: refind-pre(默认)|refind-stable|official-stable|official-pre
+#   KERNEL_CHANNEL  内核渠道: delusions6515-pre(默认)|delusions6515-stable|ref1nd-pre|ref1nd-stable|official-stable|official-pre
 #   OUT_DIR         输出目录 (默认 ./build)
 #   SKIP_VERSION_CHECK  设为 1 跳过新旧版本对比 (强制重新下载)
 #
@@ -62,9 +62,9 @@ info "目标 ABI: $TARGET_ABI (sing-box: $SINGBOX_ARCH, jq: $JQ_ARCH)  渠道: $
 # ---------- 渠道 -> 仓库 ----------
 case "$KERNEL_CHANNEL" in
   delusions6515-*)  KERNEL_REPO="Delusions6515/sing-box-releases";;
-  refind-*)         KERNEL_REPO="reF1nd/sing-box-releases" ;;
+  ref1nd-*)         KERNEL_REPO="reF1nd/sing-box-releases" ;;
   official-*)       KERNEL_REPO="SagerNet/sing-box" ;;
-  *) die "不支持的 KERNEL_CHANNEL: $KERNEL_CHANNEL (delusions6515-pre|delusions6515-stable|refind-pre|refind-stable|official-stable|official-pre)" ;;
+  *) die "不支持的 KERNEL_CHANNEL: $KERNEL_CHANNEL (delusions6515-pre|delusions6515-stable|ref1nd-pre|ref1nd-stable|official-stable|official-pre)" ;;
 esac
 case "$KERNEL_CHANNEL" in
   *-pre)     WANT_PRE=1 ;;
