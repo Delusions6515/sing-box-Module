@@ -99,8 +99,8 @@ prepare_tproxy_config() {
   _auto_bypass_apps=""
   _app_proxy_enable=0
   _app_proxy_mode=${app_proxy_mode:-whitelist}
-  [ -f "$auto_proxy_apps_file" ] && _auto_proxy_apps=$(tr '\n' ' ' <"$auto_proxy_apps_file")
-  [ -f "$auto_bypass_apps_file" ] && _auto_bypass_apps=$(tr '\n' ' ' <"$auto_bypass_apps_file")
+  [ -f "$auto_proxy_apps_file" ] && _auto_proxy_apps=$(awk 'NF { printf "%s%s", sep, $0; sep=" " }' "$auto_proxy_apps_file")
+  [ -f "$auto_bypass_apps_file" ] && _auto_bypass_apps=$(awk 'NF { printf "%s%s", sep, $0; sep=" " }' "$auto_bypass_apps_file")
   [ -f "$app_proxy_enabled_file" ] && _app_proxy_enable=$(cat "$app_proxy_enabled_file")
   [ -f "$app_proxy_mode_file" ] && _app_proxy_mode=$(cat "$app_proxy_mode_file")
   case "$_app_proxy_mode" in
