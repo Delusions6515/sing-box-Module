@@ -42,7 +42,7 @@ load_mode_inbound() {
         else .listen_port = $port end
       ' "$selected_inbound_path"
       ;;
-    *)
+    tun|mixed|auto_redirect)
       _app_proxy_enabled=0
       _app_proxy_mode=""
       [ -f "$app_proxy_enabled_file" ] && _app_proxy_enabled=$(cat "$app_proxy_enabled_file")
@@ -77,9 +77,50 @@ load_mode_inbound() {
         --arg other_package_field "$_other_package_field" \
         --rawfile packages "$_package_list_file" '
         if type != "object" then error("inbound must be an object")
-        elif .type == "tun" or .type == "ebpf" then
+        elif .type == "tun" then
           .[$package_field] = ($packages | split("\n") | map(select(length > 0)))
           | del(.[$other_package_field])
+        else . end
+      ' "$selected_inbound_path"
+      ;;
+    ebpf)
+      _app_proxy_enabled=0
+      _app_proxy_mode=""
+      [ -f "$app_proxy_enabled_file" ] && _app_proxy_enabled=$(cat "$app_proxy_enabled_file")
+      [ -f "$app_proxy_mode_file" ] && _app_proxy_mode=$(cat "$app_proxy_mode_file")
+      case "$_app_proxy_enabled:$_app_proxy_mode" in
+        1:whitelist)
+          _package_field=include_package
+          _other_package_field=exclude_package
+          _package_list_file=$auto_proxy_apps_file
+          ;;
+        1:blacklist)
+          _package_field=exclude_package
+          _other_package_field=include_package
+          _package_list_file=$auto_bypass_apps_file
+          ;;
+        0:*)
+          "$_jq" -c '
+            if type != "object" then error("inbound must be an object")
+            elif .type == "ebpf" then
+              del(.local.include_package, .local.exclude_package)
+            else . end
+          ' "$selected_inbound_path"
+          return
+          ;;
+        *)
+          echo "[Error] 分应用代理运行状态无效" >&2
+          return 1
+          ;;
+      esac
+      "$_jq" -c \
+        --arg package_field "$_package_field" \
+        --arg other_package_field "$_other_package_field" \
+        --rawfile packages "$_package_list_file" '
+        if type != "object" then error("inbound must be an object")
+        elif .type == "ebpf" then
+          .local[$package_field] = ($packages | split("\n") | map(select(length > 0)))
+          | del(.local[$other_package_field])
         else . end
       ' "$selected_inbound_path"
       ;;
