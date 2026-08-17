@@ -319,6 +319,8 @@ kernel_menu() {
     pick \
       "内核更新" \
       "更新内核 (当前渠道: $kernel_channel)" \
+      "切换到 Delusions6515 pre-release ..." \
+      "切换到 Delusions6515 stable ..." \
       "切换到 reF1nd pre-release ..." \
       "切换到 reF1nd stable ..." \
       "切换到 官方 stable ..." \
@@ -326,6 +328,8 @@ kernel_menu() {
       "返回上一级"
     case "$MENU_SEL" in
       1) run_op "更新内核" update sh "$SCRIPTS_DIR/update_kernel.sh" "$kernel_channel" "$kernel_abi" ;;
+      2) switch_channel delusions6515-pre ;;
+      3) switch_channel delusions6515-stable ;;
       2) switch_channel refind-pre ;;
       3) switch_channel refind-stable ;;
       4) switch_channel official-stable ;;

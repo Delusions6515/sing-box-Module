@@ -26,7 +26,7 @@ REPO_DIR=$(cd "$(dirname "$0")" && pwd)
 MODULE_DIR="$REPO_DIR/module"
 OUT_DIR="${OUT_DIR:-$(pwd)/build}"
 TARGET_ABI="${TARGET_ABI:-arm64-v8a}"
-KERNEL_CHANNEL="${KERNEL_CHANNEL:-refind-pre}"
+KERNEL_CHANNEL="${KERNEL_CHANNEL:-delusions6515-pre}"
 VERSION="${1:-}"
 OUT_ZIP="${2:-}"
 
@@ -61,9 +61,10 @@ info "目标 ABI: $TARGET_ABI (sing-box: $SINGBOX_ARCH, jq: $JQ_ARCH)  渠道: $
 
 # ---------- 渠道 -> 仓库 ----------
 case "$KERNEL_CHANNEL" in
-  refind-*)    KERNEL_REPO="reF1nd/sing-box-releases" ;;
-  official-*)  KERNEL_REPO="SagerNet/sing-box" ;;
-  *) die "不支持的 KERNEL_CHANNEL: $KERNEL_CHANNEL (refind-pre|refind-stable|official-stable|official-pre)" ;;
+  delusions6515-*)  KERNEL_REPO="Delusions6515/sing-box-releases";;
+  refind-*)         KERNEL_REPO="reF1nd/sing-box-releases" ;;
+  official-*)       KERNEL_REPO="SagerNet/sing-box" ;;
+  *) die "不支持的 KERNEL_CHANNEL: $KERNEL_CHANNEL (delusions6515-pre|delusions6515-stable|refind-pre|refind-stable|official-stable|official-pre)" ;;
 esac
 case "$KERNEL_CHANNEL" in
   *-pre)     WANT_PRE=1 ;;

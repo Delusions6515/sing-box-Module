@@ -103,8 +103,8 @@ if [ -z "$CHANNEL" ] || [ -z "$ABI" ]; then
 fi
 
 case "$CHANNEL" in
-  refind-pre|refind-stable|official-stable|official-pre) : ;;
-  *) err "未知渠道: $CHANNEL (refind-pre|refind-stable|official-stable|official-pre)"; exit 2 ;;
+  delusions6515-pre|delusions6515-stable|refind-pre|refind-stable|official-stable|official-pre) : ;;
+  *) err "未知渠道: $CHANNEL (delusions6515-pre|delusions6515-stable|refind-pre|refind-stable|official-stable|official-pre)"; exit 2 ;;
 esac
 
 ARCH=$(singbox_arch "$ABI")
@@ -115,8 +115,9 @@ fi
 
 # ---------- 渠道 -> 仓库 ----------
 case "$CHANNEL" in
-  refind-*)    REPO="reF1nd/sing-box-releases" ;;
-  official-*)  REPO="SagerNet/sing-box" ;;
+  delusions6515-*)  REPO="Delusions6515/sing-box-releases";;
+  refind-*)         REPO="reF1nd/sing-box-releases" ;;
+  official-*)       REPO="SagerNet/sing-box" ;;
 esac
 # pre-release 渠道: 1=取最新 pre-release; 0=取最新稳定版
 case "$CHANNEL" in

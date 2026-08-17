@@ -13,9 +13,9 @@ on:
         default: ''
       kernel-channel:
         description: 'sing-box kernel channel'
-        default: refind-pre
+        default: delusions6515-pre
         type: choice
-        options: [refind-pre, refind-stable, official-pre, official-stable]
+        options: [delusions6515-pre, delusions6515-stable, refind-pre, refind-stable, official-pre, official-stable]
   push:
     branches: [main, dev]
     tags: ['v*']

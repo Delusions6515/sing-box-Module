@@ -10,7 +10,7 @@
 
 # 仅支持在管理器内安装 (需要 root 初始化数据目录)
 if [ "$BOOTMODE" != "true" ]; then
-  abort "! 请使用 Magisk/KernelSU 管理器安装本模块"
+  abort "! 请使用 Magisk/KernelSU/APatch 管理器安装本模块"
 fi
 
 # 执行按钮 (action.sh) 最低管理器版本要求:
@@ -173,4 +173,4 @@ chmod ugo+x "$MODPATH"/*.sh "$MODPATH"/scripts/*.sh "$MODPATH"/scripts/sing-box.
 ui_print "- 安装完成"
 ui_print "- 重启后 sing-box 将自动启动"
 ui_print "- 管理器内点击 [执行] 可按音量键选择操作"
-ui_print "- 内核渠道默认 refind-pre, 可在 [执行] 菜单切换"
+ui_print "- 内核渠道默认 delusions6515-pre, 可在 [执行] 菜单切换"
