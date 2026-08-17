@@ -101,7 +101,7 @@ jobs:
       - name: Build module
         env:
           TARGET_ABI: ${{ matrix.abi }}
-          KERNEL_CHANNEL: ${{ inputs.kernel-channel || 'refind-pre' }}
+          KERNEL_CHANNEL: ${{ inputs.kernel-channel || 'delusions6515-pre' }}
           BUILD_TYPE: ${{ needs.metadata.outputs.build-type }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
