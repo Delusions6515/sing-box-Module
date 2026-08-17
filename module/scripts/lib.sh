@@ -5,7 +5,8 @@
 # 注意: 运行环境为 busybox ash, 勿使用 bash 数组等特性
 # ============================================================
 
-MODDIR=${0%/*}
+SCRIPTS_DIR=$(dirname "$0")
+MODDIR="$SCRIPTS_DIR/.."
 
 # ---------- 操作日志轮转 ----------
 # 归档 run.log / run_error.log 为 .bak，新文件只含后续操作输出。
