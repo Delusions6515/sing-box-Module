@@ -41,7 +41,6 @@ CONFIG_DIR=$DATA_DIR/config
 LOCAL_CONFIG_DIR=$CONFIG_DIR/local
 REMOTE_CONFIG_DIR=$CONFIG_DIR/remote
 INBOUNDS_DIR=$CONFIG_DIR/inbounds
-INBOUND_TEMPLATE_DIR=$INBOUNDS_DIR/tpl
 RUNTIME_CONFIG_DIR=$CONFIG_DIR/run
 RUN_DIR=$DATA_DIR/run
 
@@ -129,12 +128,10 @@ if [ ! -f "$USER_SCRIPTS_DIR/subscription.json" ]; then
     '}' >"$USER_SCRIPTS_DIR/subscription.json"
 fi
 
-# 入站模板位于 config/inbounds/tpl；用户可在 config/inbounds/ 放置同名 JSON 覆盖。
-for INBOUND_TEMPLATE in "$MODPATH"/config/inbounds/tpl/*.json; do
-  [ -f "$INBOUND_TEMPLATE" ] || continue
-  INBOUND_TARGET="$INBOUND_TEMPLATE_DIR/$(basename "$INBOUND_TEMPLATE")"
-  [ -f "$INBOUND_TARGET" ] || cp -f "$INBOUND_TEMPLATE" "$INBOUND_TARGET"
-done
+# 入站模板位于 $MODDIR/config/inbounds/tpl；用户可在 config/inbounds/ 放置同名 JSON 覆盖。
+if [ ! -d $INBOUNDS_DIR ]; then
+  mkdir -p $INBOUNDS_DIR
+fi
 
 # AndroidTProxyShell (atp, 透明代理 iptables 规则): 配置模板 + 缺失兜底
 # atp 脚本随内置二进制一起拷贝 (首次/覆盖时); 此处仅补缺失 (旧版升级无 atp 时)
