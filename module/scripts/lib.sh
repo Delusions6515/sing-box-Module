@@ -5,9 +5,6 @@
 # 注意: 运行环境为 busybox ash, 勿使用 bash 数组等特性
 # ============================================================
 
-SCRIPTS_DIR=$(dirname "$0")
-MODDIR="$SCRIPTS_DIR/.."
-
 # ---------- 操作日志轮转 ----------
 # 归档 run.log / run_error.log 为 .bak，新文件只含后续操作输出。
 rotate_run_log() {
@@ -38,7 +35,7 @@ load_config() {
   local_config_path="${config_root}/local"
   remote_config_path="${config_root}/remote"
   user_inbounds_path="${config_root}/inbounds"
-  inbound_template_path="${MODDIR}/config/inbounds/tpl"
+  inbound_template_path="${SCRIPTS_DIR}/../config/inbounds/tpl"
   runtime_config_dir="${config_root}/run"
   run_path="${sing_box_path}/run"
   subscription_file="${user_scripts_path}/subscription.json"
